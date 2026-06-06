@@ -1,7 +1,9 @@
 /**
  * Fallback complete-room Three.js code (defines createCompleteRoom() returning a
- * THREE.Scene). Used when AI vision generation is unavailable so the studio always
- * renders a room. THREE is in scope when this string is eval'd by the viewer.
+ * THREE.Scene). Used ONLY when AI vision generation is unavailable. It is an
+ * EMPTY room shell (floor, walls, ceiling, window, lighting) — no furniture — so
+ * a fallback never fabricates furniture that wasn't in the user's photo.
+ * THREE is in scope when this string is eval'd by the viewer.
  */
 export const FALLBACK_ROOM = `function createCompleteRoom() {
   const scene = new THREE.Scene();
@@ -12,50 +14,51 @@ export const FALLBACK_ROOM = `function createCompleteRoom() {
   // Floor
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(roomWidth, roomDepth),
-    new THREE.MeshStandardMaterial({ color: 0xd9c7ad, roughness: 0.8 })
+    new THREE.MeshStandardMaterial({ color: 0xd9c7ad, roughness: 0.85 })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
+  // Ceiling
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(roomWidth, roomDepth),
+    new THREE.MeshStandardMaterial({ color: 0xf2ede3, roughness: 1 })
+  );
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = roomHeight;
+  scene.add(ceiling);
+
   // Walls
   const wallMat = new THREE.MeshStandardMaterial({ color: 0xece6da, roughness: 0.95 });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomHeight), wallMat);
   back.position.set(0, roomHeight / 2, -roomDepth / 2);
+  back.receiveShadow = true;
   scene.add(back);
   const left = new THREE.Mesh(new THREE.PlaneGeometry(roomDepth, roomHeight), wallMat);
   left.rotation.y = Math.PI / 2;
   left.position.set(-roomWidth / 2, roomHeight / 2, 0);
+  left.receiveShadow = true;
   scene.add(left);
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(roomDepth, roomHeight), wallMat);
+  right.rotation.y = -Math.PI / 2;
+  right.position.set(roomWidth / 2, roomHeight / 2, 0);
+  scene.add(right);
 
-  // Sofa
-  const sofa = new THREE.Group();
-  const body = new THREE.MeshStandardMaterial({ color: 0xcfc3b0, roughness: 0.9 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.95), body); base.position.y = 0.45; sofa.add(base);
-  const back2 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 0.2), body); back2.position.set(0, 0.85, -0.38); sofa.add(back2);
-  sofa.position.set(0, 0, -1.9); scene.add(sofa);
-
-  // Coffee table
-  const tableMat = new THREE.MeshStandardMaterial({ color: 0xc6a578, roughness: 0.5 });
-  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.6), tableMat); tableTop.position.set(0, 0.42, -0.6); scene.add(tableTop);
-
-  // Rug
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.8), new THREE.MeshStandardMaterial({ color: 0xe7dfce, roughness: 1 }));
-  rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, -0.9); scene.add(rug);
-
-  // Floor lamp
-  const lamp = new THREE.Group();
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 12), new THREE.MeshStandardMaterial({ color: 0x2b2b2b, metalness: 0.6, roughness: 0.4 }));
-  pole.position.y = 0.8; lamp.add(pole);
-  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.3, 24), new THREE.MeshStandardMaterial({ color: 0xf3ead2, roughness: 0.8 }));
-  shade.position.y = 1.65; lamp.add(shade);
-  const bulb = new THREE.PointLight(0xfff1cc, 0.7, 6); bulb.position.set(0, 1.6, 0); lamp.add(bulb);
-  lamp.position.set(-2.2, 0, -1.6); scene.add(lamp);
+  // Window on the back wall
+  const win = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0xbcd3e0, roughness: 0.2, metalness: 0.1 })
+  );
+  win.position.set(0, 1.6, -roomDepth / 2 + 0.02);
+  scene.add(win);
 
   // Lighting
   scene.add(new THREE.AmbientLight(0xffffff, 0.7));
   const dir = new THREE.DirectionalLight(0xffffff, 0.5);
-  dir.position.set(5, 8, 5); dir.castShadow = true; scene.add(dir);
+  dir.position.set(5, 8, 5);
+  dir.castShadow = true;
+  scene.add(dir);
 
   const camera = new THREE.PerspectiveCamera(60, 1.6, 0.1, 100);
   camera.position.set(4, 2.6, 4);

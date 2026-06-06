@@ -209,11 +209,36 @@ export function RoomStudio() {
   }, [])
 
   // --- actions -------------------------------------------------------------
+  // Downscale to max 1024px JPEG so the vision API reliably accepts it
+  // (large phone photos otherwise get rejected, which triggered the fallback room).
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onloadend = () => setImageData(reader.result as string)
+    reader.onload = () => {
+      const img = new window.Image()
+      img.onload = () => {
+        const MAX = 1024
+        let { width, height } = img
+        if (width > MAX || height > MAX) {
+          const s = MAX / Math.max(width, height)
+          width = Math.round(width * s)
+          height = Math.round(height * s)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          setImageData(reader.result as string)
+          return
+        }
+        ctx.drawImage(img, 0, 0, width, height)
+        setImageData(canvas.toDataURL('image/jpeg', 0.85))
+      }
+      img.onerror = () => setImageData(reader.result as string)
+      img.src = reader.result as string
+    }
     reader.readAsDataURL(file)
     e.target.value = ''
   }
