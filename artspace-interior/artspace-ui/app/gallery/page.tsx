@@ -22,16 +22,16 @@ export default async function GalleryPage() {
   const designs = await getDesigns()
 
   return (
-    <main className="min-h-screen w-full bg-[#d2d0cc] p-3 sm:p-5">
-      <div className="mx-auto w-full max-w-[1500px] rounded-[28px] bg-[#1a1813] p-5 text-[#f4f2ec] shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-7">
+    <main className="min-h-screen w-full bg-[#1a1813] px-6 py-6 text-[#f4f2ec] sm:px-9">
+      <div className="w-full">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">Saved Rooms</h1>
-            <span className="rounded-full bg-white/5 px-3 py-1 text-sm text-[#cdd1a0]">{designs.length}</span>
+            <h1 className="text-[40px] font-semibold leading-none tracking-tight">Saved Rooms</h1>
+            <span className="rounded-full bg-white/5 px-3.5 py-1.5 text-base text-[#cdd1a0]">{designs.length}</span>
           </div>
           <Link
             href="/studio"
-            className="rounded-full bg-[#cdd1a0] px-5 py-2.5 text-sm font-semibold text-[#1a1813] transition-colors hover:bg-[#d8dcb0]"
+            className="rounded-full bg-[#cdd1a0] px-6 py-3 text-base font-semibold text-[#1a1813] transition-colors hover:bg-[#d8dcb0]"
           >
             + Furnish a new room
           </Link>
