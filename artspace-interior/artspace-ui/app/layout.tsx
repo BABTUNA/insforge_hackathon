@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Playfair_Display, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const mono = JetBrains_Mono({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-mono",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-playfair",
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
@@ -26,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${mono.variable} ${playfair.variable} antialiased`}>
-        {children}
-      </body>
+      <body className={`${inter.variable} antialiased`}>{children}</body>
     </html>
   );
 }

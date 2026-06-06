@@ -3,8 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Sparkles, Send, Loader2, RotateCcw } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  Upload,
+  Sparkles,
+  Send,
+  Loader2,
+  RotateCcw,
+  Box,
+  Trash2,
+  MoreHorizontal,
+  Check,
+} from 'lucide-react'
 
 type Phase = 'upload' | 'generating' | 'room'
 
@@ -17,15 +27,24 @@ type Product = {
   why?: string
 }
 
-type ChatMsg = {
-  id: number
-  role: 'user' | 'agent'
-  text: string
-  status?: 'researching' | 'building' | 'done'
-  product?: Product
+type Item = Product & { id: number; category: string }
+
+let itemId = 0
+
+const CATEGORY = (q: string): string => {
+  const s = q.toLowerCase()
+  if (/(sofa|couch|sectional)/.test(s)) return 'Sofa'
+  if (/(coffee|side|desk|table)/.test(s)) return 'Table'
+  if (/(rug|carpet)/.test(s)) return 'Rug'
+  if (/(lamp|light)/.test(s)) return 'Light'
+  if (/(chair|armchair|stool)/.test(s)) return 'Chair'
+  if (/(art|paint|print|poster)/.test(s)) return 'Art'
+  if (/(plant|tree)/.test(s)) return 'Plant'
+  if (/(book|shelf|cabinet|storage)/.test(s)) return 'Shelf'
+  return 'Decor'
 }
 
-let msgId = 0
+const money = (n: number) => `$${Math.round(Number(n) || 0).toLocaleString()}`
 
 export function RoomStudio() {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -34,7 +53,7 @@ export function RoomStudio() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const roomRootRef = useRef<THREE.Group | null>(null)
-  const roomCodeRef = useRef<string>('')
+  const addedObjectsRef = useRef<Map<number, THREE.Object3D>>(new Map())
   const addedCountRef = useRef(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -42,15 +61,16 @@ export function RoomStudio() {
   const [imageData, setImageData] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState('')
   const [mock, setMock] = useState(false)
-  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [items, setItems] = useState<Item[]>([])
+  const [activity, setActivity] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  // --- Three.js scene bootstrap -------------------------------------------
+  // --- Three.js bootstrap --------------------------------------------------
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
-
     const w = host.clientWidth || 800
     const h = host.clientHeight || 600
 
@@ -63,7 +83,7 @@ export function RoomStudio() {
     rendererRef.current = renderer
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xfafafa)
+    scene.background = new THREE.Color(0x201e16)
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 500)
@@ -78,7 +98,7 @@ export function RoomStudio() {
     controls.maxPolarAngle = Math.PI / 2 + 0.05
     controlsRef.current = controls
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55))
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
     const key = new THREE.DirectionalLight(0xffffff, 0.7)
     key.position.set(6, 9, 6)
     key.castShadow = true
@@ -100,7 +120,6 @@ export function RoomStudio() {
       cameraRef.current.updateProjectionMatrix()
     }
     window.addEventListener('resize', onResize)
-
     return () => {
       window.removeEventListener('resize', onResize)
       cancelAnimationFrame(raf)
@@ -110,7 +129,7 @@ export function RoomStudio() {
     }
   }, [])
 
-  // --- Scene helpers -------------------------------------------------------
+  // --- scene helpers -------------------------------------------------------
   const fitCamera = useCallback((obj: THREE.Object3D) => {
     const camera = cameraRef.current
     const controls = controlsRef.current
@@ -140,8 +159,6 @@ export function RoomStudio() {
         roomRootRef.current = null
       }
       const root = new THREE.Group()
-      root.name = 'CompleteRoom'
-
       const factory = new Function(
         'THREE',
         `${code}\nif (typeof createCompleteRoom === 'function') return createCompleteRoom();\nreturn null;`
@@ -170,30 +187,28 @@ export function RoomStudio() {
     [fitCamera]
   )
 
-  const addFurniture = useCallback((code: string) => {
+  const addFurniture = useCallback((code: string): THREE.Object3D | null => {
     const scene = sceneRef.current
-    if (!scene) return
+    if (!scene) return null
     const factory = new Function(
       'THREE',
       `${code}\nif (typeof createFurniture === 'function') return createFurniture();\nreturn null;`
     )
     const obj = factory(THREE)
-    if (!(obj instanceof THREE.Object3D)) throw new Error('Furniture code returned nothing')
+    if (!(obj instanceof THREE.Object3D)) return null
     obj.traverse((c) => {
       if ((c as THREE.Mesh).isMesh) {
         c.castShadow = true
         c.receiveShadow = true
       }
     })
-    // Place added pieces in a row across the front of the room so they don't overlap.
     const i = addedCountRef.current++
-    const x = -1.8 + (i % 4) * 1.2
-    const z = 1.2 - Math.floor(i / 4) * 1.2
-    obj.position.set(x, 0, z)
+    obj.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
     scene.add(obj)
+    return obj
   }, [])
 
-  // --- Actions -------------------------------------------------------------
+  // --- actions -------------------------------------------------------------
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -215,17 +230,8 @@ export function RoomStudio() {
       })
       const data = await res.json()
       if (!data.code) throw new Error('No room code returned')
-      roomCodeRef.current = data.code
       injectRoom(data.code)
       setPhase('room')
-      setMessages([
-        {
-          id: msgId++,
-          role: 'agent',
-          text: "Here's your room in 3D. Tell me what you'd like to add — e.g. \"a walnut mid-century coffee table\" — and I'll send the swarm to find it.",
-          status: 'done',
-        },
-      ])
     } catch (err) {
       setStatusMsg(err instanceof Error ? err.message : 'Generation failed')
       setPhase('upload')
@@ -234,21 +240,11 @@ export function RoomStudio() {
 
   const send = async () => {
     const q = input.trim()
-    if (!q || busy) return
+    if (!q || busy || phase !== 'room') return
     setInput('')
     setBusy(true)
-    const userMsg: ChatMsg = { id: msgId++, role: 'user', text: q }
-    const agentMsg: ChatMsg = {
-      id: msgId++,
-      role: 'agent',
-      text: mock ? 'Finding a match…' : 'Sending an agent to shop the web…',
-      status: 'researching',
-    }
-    setMessages((m) => [...m, userMsg, agentMsg])
-
-    const patch = (changes: Partial<ChatMsg>) =>
-      setMessages((m) => m.map((msg) => (msg.id === agentMsg.id ? { ...msg, ...changes } : msg)))
-
+    setSaved(false)
+    setActivity(mock ? `Finding a match for “${q}”…` : `Agent shopping the web for “${q}”…`)
     try {
       const res = await fetch('/api/furniture/research', {
         method: 'POST',
@@ -259,21 +255,55 @@ export function RoomStudio() {
       const product: Product | undefined = data.result
       if (!product) throw new Error('No product found')
 
-      patch({ text: 'Found it — building the 3D model into your room…', status: 'building', product })
-
+      setActivity('Building the 3D model into your room…')
       const gen = await fetch('/api/generate-3d', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ furniture_type: q, style: '', colors: ['neutral'], materials: ['wood'] }),
       })
       const genData = await gen.json()
-      if (genData.code) addFurniture(genData.code)
-
-      patch({ text: 'Added to your room ✓', status: 'done', product })
-    } catch (err) {
-      patch({ text: err instanceof Error ? err.message : 'Could not add that piece.', status: 'done' })
+      const id = itemId++
+      const obj = genData.code ? addFurniture(genData.code) : null
+      if (obj) addedObjectsRef.current.set(id, obj)
+      setItems((prev) => [...prev, { ...product, id, category: CATEGORY(q) }])
+    } catch {
+      setActivity(null)
     } finally {
+      setActivity(null)
       setBusy(false)
+    }
+  }
+
+  const removeItem = (id: number) => {
+    const scene = sceneRef.current
+    const obj = addedObjectsRef.current.get(id)
+    if (scene && obj) scene.remove(obj)
+    addedObjectsRef.current.delete(id)
+    setItems((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  const saveRoom = async () => {
+    if (!items.length) return
+    try {
+      await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          styles: [],
+          budget: 0,
+          total: items.reduce((s, i) => s + (i.price_usd || 0), 0),
+          found: items.length,
+          items: items.map((i) => ({
+            key: String(i.id),
+            label: i.category,
+            icon: '🛋️',
+            result: i,
+          })),
+        }),
+      })
+      setSaved(true)
+    } catch {
+      /* ignore */
     }
   }
 
@@ -283,166 +313,241 @@ export function RoomStudio() {
       scene.remove(roomRootRef.current)
       roomRootRef.current = null
     }
+    addedObjectsRef.current.forEach((o) => scene?.remove(o))
+    addedObjectsRef.current.clear()
     addedCountRef.current = 0
-    roomCodeRef.current = ''
     setImageData(null)
-    setMessages([])
+    setItems([])
+    setActivity(null)
     setPhase('upload')
     setStatusMsg('')
+    setSaved(false)
   }
 
-  // --- Render --------------------------------------------------------------
+  const total = items.reduce((s, i) => s + (i.price_usd || 0), 0)
+
+  // --- render --------------------------------------------------------------
   return (
-    <div className="flex h-full w-full flex-col lg:flex-row">
-      {/* 3D viewport — dominant, fills available space */}
-      <div className="relative min-h-[56vh] flex-1 bg-[#fafafa] lg:min-h-0">
-        <div ref={hostRef} className="absolute inset-0 h-full w-full" />
+    <>
+      {/* Header row */}
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Studio</h1>
+          <span className="rounded-full bg-white/5 px-3 py-1 text-sm text-[#cdd1a0]">{items.length} pieces</span>
+        </div>
 
-        {/* Upload / generating overlay */}
-        <AnimatePresence>
-          {phase !== 'room' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center bg-white/90 px-6 backdrop-blur-sm"
-            >
-              {phase === 'generating' ? (
-                <div className="flex max-w-sm flex-col items-center gap-5 text-center">
-                  <Loader2 className="h-7 w-7 animate-spin text-[#ff22cc]" />
-                  <p className="serif text-2xl leading-snug text-[#111]">{statusMsg}</p>
-                  <p className="text-xs leading-relaxed text-gray-500">
-                    Claude is rebuilding every object as 3D geometry. This takes about a minute.
-                  </p>
-                </div>
-              ) : (
-                <div className="w-full max-w-sm">
-                  <p className="mono text-[11px] uppercase tracking-[0.2em] text-[#ff22cc]">step 01</p>
-                  <h3 className="serif mt-2 text-3xl leading-tight text-[#111]">Upload a room photo</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-gray-500">
-                    We rebuild it as an explorable 3D scene you can furnish.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    className="mt-6 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 border border-dashed border-[#cfcfcf] bg-white text-gray-500 transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
-                  >
-                    {imageData ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={imageData} alt="room" className="h-full w-full object-cover" />
-                    ) : (
-                      <>
-                        <Upload className="h-6 w-6" />
-                        <span className="text-sm font-medium">Drop or click to upload</span>
-                        <span className="text-xs text-gray-400">JPEG or PNG</span>
-                      </>
-                    )}
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-                  {statusMsg && <p className="mt-3 text-sm text-rose-500">{statusMsg}</p>}
-                  <button
-                    onClick={generateRoom}
-                    disabled={!imageData}
-                    className="mt-5 inline-flex w-full items-center justify-center gap-2 bg-[#ff22cc] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#d600a8] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Sparkles className="h-4 w-4" /> Generate my room in 3D
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* phase segmented indicator */}
+        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-sm">
+          {(['upload', 'room'] as const).map((p) => {
+            const active = phase === p || (p === 'room' && phase === 'generating')
+            return (
+              <span
+                key={p}
+                className={`rounded-full px-4 py-1.5 transition-colors ${
+                  active ? 'bg-[#cdd1a0] font-medium text-[#1a1813]' : 'text-[#8f8c80]'
+                }`}
+              >
+                {p === 'upload' ? 'Upload' : '3D Room'}
+              </span>
+            )
+          })}
+        </div>
 
-        {phase === 'room' && (
-          <>
+        <div className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-xs text-[#8f8c80]">
+            <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#cdd1a0]" />
+            mock
+          </label>
+          {phase === 'room' && (
             <button
               onClick={reset}
-              className="absolute right-4 top-4 inline-flex items-center gap-1.5 border border-[#111]/15 bg-white/90 px-4 py-2 text-xs font-medium text-gray-700 backdrop-blur transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
+              className="flex items-center gap-1.5 rounded-full border border-white/10 px-4 py-2 text-xs text-[#cfccc2] transition-colors hover:bg-white/5"
             >
               <RotateCcw className="h-3.5 w-3.5" /> New room
             </button>
-            <p className="mono pointer-events-none absolute bottom-4 left-4 text-[11px] text-gray-400">
-              drag to orbit · scroll to zoom
-            </p>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Chat sidebar */}
-      <aside className="flex h-[44vh] w-full shrink-0 flex-col border-t border-[#111]/10 bg-white lg:h-auto lg:w-[400px] lg:border-l lg:border-t-0">
-        <div className="flex items-center justify-between border-b border-[#111]/10 px-5 py-4">
-          <div>
-            <h3 className="serif text-lg text-[#111]">Design with the swarm</h3>
-            <p className="text-[11px] text-gray-400">Ask for furniture — agents shop the web for it.</p>
-          </div>
-          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-400">
-            <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#ff22cc]" />
-            mock
-          </label>
-        </div>
+      {/* Main two-column */}
+      <div className="mt-5 grid h-[640px] grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
+        {/* 3D viewport card */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#201e16]">
+          <div ref={hostRef} className="absolute inset-0 h-full w-full" />
 
-        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {phase !== 'room' && (
-            <p className="mt-10 text-center text-sm text-gray-400">
-              Generate a room first, then chat here to furnish it.
+          <AnimatePresence>
+            {phase !== 'room' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center bg-[#1a1813]/80 px-6 backdrop-blur-sm"
+              >
+                {phase === 'generating' ? (
+                  <div className="flex max-w-sm flex-col items-center gap-5 text-center">
+                    <Loader2 className="h-7 w-7 animate-spin text-[#cdd1a0]" />
+                    <p className="text-xl font-medium">{statusMsg}</p>
+                    <p className="text-xs leading-relaxed text-[#8f8c80]">
+                      Claude is rebuilding every object as 3D geometry. This takes about a minute.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#211f17] p-7">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#cdd1a0]">Step 01</p>
+                    <h3 className="mt-2 text-2xl font-semibold">Upload a room photo</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-[#8f8c80]">
+                      We rebuild it as an explorable 3D scene you can furnish.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="mt-5 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-white/15 bg-black/20 text-[#8f8c80] transition-colors hover:border-[#cdd1a0] hover:text-[#cdd1a0]"
+                    >
+                      {imageData ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={imageData} alt="room" className="h-full w-full object-cover" />
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6" />
+                          <span className="text-sm font-medium">Drop or click to upload</span>
+                          <span className="text-xs opacity-70">JPEG or PNG</span>
+                        </>
+                      )}
+                    </button>
+                    <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+                    {statusMsg && <p className="mt-3 text-sm text-rose-400">{statusMsg}</p>}
+                    <button
+                      onClick={generateRoom}
+                      disabled={!imageData}
+                      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#cdd1a0] px-8 py-3 text-sm font-semibold text-[#1a1813] transition-colors hover:bg-[#d8dcb0] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Sparkles className="h-4 w-4" /> Generate my room in 3D
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {phase === 'room' && (
+            <p className="pointer-events-none absolute bottom-4 left-5 text-[11px] text-[#8f8c80]">
+              drag to orbit · scroll to zoom
             </p>
           )}
-          {messages.map((m) => (
-            <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-              <div
-                className={`max-w-[88%] px-4 py-2.5 text-sm ${
-                  m.role === 'user' ? 'bg-[#ff22cc] text-white' : 'bg-[#f5f5f5] text-[#111]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {m.status === 'researching' && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff22cc]" />}
-                  <span>{m.text}</span>
-                </div>
-                {m.product && (
-                  <a
-                    href={m.product.product_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 flex gap-3 border border-[#111]/10 bg-white p-2"
-                  >
-                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden bg-[#f5f5f5]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={m.product.image_url} alt={m.product.name} className="h-full w-full object-cover" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-medium text-[#111]">{m.product.name}</div>
-                      <div className="text-xs font-semibold text-[#ff22cc]">
-                        ${Math.round(m.product.price_usd).toLocaleString()}
-                      </div>
-                      <div className="truncate text-[10px] text-gray-400">{m.product.retailer} →</div>
-                    </div>
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
         </div>
 
-        <div className="border-t border-[#111]/10 p-3">
-          <div className="flex items-center gap-2">
+        {/* Right panel — furniture (cargo-items style) */}
+        <aside className="flex flex-col rounded-3xl border border-white/[0.06] bg-[#211f17]">
+          <div className="flex items-center justify-between px-5 pt-5">
+            <h2 className="text-xl font-semibold">Your Room</h2>
+            <button className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-[#8f8c80]">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* summary block */}
+          <div className="mx-5 mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/20 p-4 text-xs">
+            <div>
+              <div className="text-[#8f8c80]">Source</div>
+              <div className="mt-1 font-medium">Photo</div>
+            </div>
+            <div>
+              <div className="text-[#8f8c80]">Pieces</div>
+              <div className="mt-1 font-medium">{items.length}</div>
+            </div>
+            <div>
+              <div className="text-[#8f8c80]">Status</div>
+              <div className="mt-1 font-medium text-[#cdd1a0]">{phase === 'room' ? 'Ready' : 'Setup'}</div>
+            </div>
+          </div>
+
+          {/* furniture list */}
+          <div className="mt-4 px-5 text-xs uppercase tracking-wide text-[#8f8c80]">Furniture added</div>
+          <div className="dash-scroll mt-2 flex-1 space-y-1.5 overflow-y-auto px-3 pb-2">
+            {activity && (
+              <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5 text-xs text-[#cdd1a0]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span className="truncate">{activity}</span>
+              </div>
+            )}
+            {items.length === 0 && !activity && (
+              <p className="px-2 py-8 text-center text-xs text-[#6c6a5f]">
+                {phase === 'room' ? 'Ask the swarm below to add furniture.' : 'Generate a room to start furnishing.'}
+              </p>
+            )}
+            {items.map((it) => (
+              <div
+                key={it.id}
+                className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.04]"
+              >
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#cdd1a0]">
+                  <Box className="h-4 w-4" />
+                </span>
+                <a href={it.product_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-medium">{it.name}</div>
+                  <div className="text-[11px] text-[#8f8c80]">{it.retailer}</div>
+                </a>
+                <span className="text-[13px] font-semibold">{money(it.price_usd)}</span>
+                <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[10px] text-[#8f8c80]">{it.category}</span>
+                <button
+                  onClick={() => removeItem(it.id)}
+                  className="text-[#6c6a5f] opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* totals */}
+          <div className="mx-5 flex items-end justify-between border-t border-white/10 py-4">
+            <div>
+              <div className="text-[11px] text-[#8f8c80]">Total Pieces</div>
+              <div className="text-lg font-semibold">{items.length}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] text-[#8f8c80]">Estimated Cost</div>
+              <div className="text-lg font-semibold text-[#cdd1a0]">{money(total)}</div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 px-5 pb-4">
+            <button
+              onClick={saveRoom}
+              disabled={!items.length}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/15 py-2.5 text-sm font-medium transition-colors hover:bg-white/5 disabled:opacity-40"
+            >
+              {saved ? <Check className="h-4 w-4 text-[#cdd1a0]" /> : null}
+              {saved ? 'Saved' : 'Save room'}
+            </button>
+            <a
+              href="/gallery"
+              className="flex flex-1 items-center justify-center rounded-full border border-white/15 py-2.5 text-sm font-medium transition-colors hover:bg-white/5"
+            >
+              Gallery
+            </a>
+          </div>
+
+          {/* request bar (olive accent) */}
+          <div className="mx-3 mb-3 flex items-center gap-2 rounded-full bg-[#cdd1a0] p-1.5 pl-4">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
               disabled={phase !== 'room' || busy}
               placeholder={phase === 'room' ? 'Add a walnut coffee table…' : 'Generate a room first'}
-              className="flex-1 border border-[#e5e5e5] bg-[#fafafa] px-4 py-2.5 text-sm outline-none focus:border-[#ff22cc] disabled:opacity-50"
+              className="flex-1 bg-transparent text-sm text-[#1a1813] placeholder-[#1a1813]/50 outline-none disabled:opacity-60"
             />
             <button
               onClick={send}
               disabled={phase !== 'room' || busy || !input.trim()}
-              className="flex h-10 w-10 items-center justify-center bg-[#ff22cc] text-white transition-colors hover:bg-[#d600a8] disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1a1813] text-[#cdd1a0] transition-opacity disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
-        </div>
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </>
   )
 }

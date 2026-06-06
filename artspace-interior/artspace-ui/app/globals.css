@@ -39,24 +39,17 @@ main {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  background: #d2d0cc;
+  color: #f4f2ec;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* eventual.ai-style helpers */
-.mono {
-  font-family: var(--font-mono), ui-monospace, monospace;
-}
-.accent-square {
-  display: inline-block;
-  width: 0.7em;
-  height: 0.7em;
-  background: var(--accent);
-  vertical-align: baseline;
-}
+/* Dashboard helpers */
+.dash-scroll::-webkit-scrollbar { width: 6px; }
+.dash-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+.dash-scroll::-webkit-scrollbar-track { background: transparent; }
 
 .page-shell {
   background: var(--surface);
