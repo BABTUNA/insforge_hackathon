@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { readAgent } from '@/lib/fleet/replicas'
+import { fallbackFor } from '@/lib/fleet/fallback'
 import { getRun, type SlotState } from '@/lib/fleet/store'
 
 export const runtime = 'nodejs'
@@ -56,7 +57,29 @@ export async function GET(req: NextRequest) {
       // Initial snapshot so the board renders immediately.
       send('update', { runId, slots: snapshot(run.slots) })
 
-      for (let tick = 0; tick < MAX_TICKS && !closed; tick++) {
+      // Demo mode: simulate the swarm with staggered reveals + fake activity.
+      if (run.demo) {
+        const ACTS = ['Searching IKEA…', 'Searching Wayfair…', 'Reading a product page…', 'Comparing prices…']
+        for (let tick = 0; tick < 12 && !closed; tick++) {
+          const working = run.slots.filter((s) => s.status === 'working')
+          if (working.length === 0) break
+          // Reveal one slot's product each tick; others get rotating activity.
+          const reveal = working[0]
+          const fb = fallbackFor(reveal.key)
+          if (fb) {
+            reveal.status = 'done'
+            reveal.result = fb
+            reveal.activity = 'Found it ✓'
+          }
+          for (const s of run.slots) {
+            if (s.status === 'working') s.activity = ACTS[(tick + s.key.length) % ACTS.length]
+          }
+          send('update', { runId, slots: snapshot(run.slots) })
+          await sleep(1100)
+        }
+      }
+
+      for (let tick = 0; tick < MAX_TICKS && !closed && !run.demo; tick++) {
         const pending = run.slots.filter((s) => s.status === 'working' && s.agentId)
         if (pending.length === 0) break
 
@@ -83,10 +106,19 @@ export async function GET(req: NextRequest) {
       }
 
       // Anything still working at the ceiling is marked timed out (fallback can fill later).
+      // Safety net: any slot that didn't finish falls back to a canned product
+      // so the room is always fully furnished (never a hole on stage).
       for (const s of run.slots) {
-        if (s.status === 'working') {
-          s.status = 'error'
-          s.activity = 'Timed out'
+        if (s.status !== 'done') {
+          const fb = fallbackFor(s.key)
+          if (fb) {
+            s.status = 'done'
+            s.result = fb
+            s.activity = 'Found it ✓'
+          } else {
+            s.status = 'error'
+            s.activity = 'Timed out'
+          }
         }
       }
 

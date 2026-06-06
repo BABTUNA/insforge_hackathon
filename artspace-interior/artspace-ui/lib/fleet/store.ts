@@ -22,6 +22,7 @@ export type RunState = {
   styles: string[]
   budget: number
   createdAt: number
+  demo: boolean
   slots: SlotState[]
 }
 

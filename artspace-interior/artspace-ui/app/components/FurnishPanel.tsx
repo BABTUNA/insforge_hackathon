@@ -39,13 +39,13 @@ export function FurnishPanel({ selectedStyles }: FurnishPanelProps) {
     }
   }
 
-  const launch = async () => {
+  const launch = async (demo = false) => {
     setError('')
     setSummary(null)
     setSaved('idle')
     setPhase('running')
     try {
-      const res = await startFleet({ styles: selectedStyles, budget, fleetSize: FLEET_SIZE })
+      const res = await startFleet({ styles: selectedStyles, budget, fleetSize: FLEET_SIZE, demo })
       setSlots(res.slots)
       cleanupRef.current = subscribeFleet(res.runId, {
         onUpdate: (s) => setSlots(s),
@@ -115,13 +115,19 @@ export function FurnishPanel({ selectedStyles }: FurnishPanelProps) {
           {error && <p className="mt-4 text-sm text-rose-500">{error}</p>}
 
           <motion.button
-            onClick={launch}
+            onClick={() => launch(false)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="mt-8 w-full rounded-lg bg-[#c7a564] px-6 py-4 text-base font-semibold text-white shadow-lg transition-colors hover:bg-[#b89050]"
           >
             Furnish my room → launch {FLEET_SIZE} agents
           </motion.button>
+          <button
+            onClick={() => launch(true)}
+            className="mt-3 w-full text-center text-xs text-gray-400 hover:text-[#a6803f]"
+          >
+            Run simulated demo (no live agents)
+          </button>
         </div>
       </div>
     )

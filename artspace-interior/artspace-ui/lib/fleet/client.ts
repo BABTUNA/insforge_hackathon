@@ -33,6 +33,7 @@ export async function startFleet(opts: {
   styles: string[]
   budget: number
   fleetSize?: number
+  demo?: boolean
 }): Promise<StartResponse> {
   const res = await fetch('/api/fleet/start', {
     method: 'POST',
