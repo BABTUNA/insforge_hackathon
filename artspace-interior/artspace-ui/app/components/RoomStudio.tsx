@@ -56,6 +56,8 @@ export function RoomStudio() {
   const addedObjectsRef = useRef<Map<number, THREE.Object3D>>(new Map())
   const addedCountRef = useRef(0)
   const fileRef = useRef<HTMLInputElement>(null)
+  const markerRef = useRef<THREE.Object3D | null>(null)
+  const placementRef = useRef<{ x: number; z: number } | null>(null)
 
   const [phase, setPhase] = useState<Phase>('upload')
   const [imageData, setImageData] = useState<string | null>(null)
@@ -66,6 +68,7 @@ export function RoomStudio() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [placementSet, setPlacementSet] = useState(false)
 
   // --- Three.js bootstrap --------------------------------------------------
   useEffect(() => {
@@ -104,6 +107,52 @@ export function RoomStudio() {
     key.castShadow = true
     scene.add(key)
 
+    // Placement marker (a magenta ring + pin) shown where the next piece will go.
+    const marker = new THREE.Group()
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.22, 0.32, 40),
+      new THREE.MeshBasicMaterial({ color: 0xff22cc, side: THREE.DoubleSide, transparent: true, opacity: 0.95 })
+    )
+    ring.rotation.x = -Math.PI / 2
+    ring.position.y = 0.02
+    const pin = new THREE.Mesh(
+      new THREE.SphereGeometry(0.07, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff22cc })
+    )
+    pin.position.y = 0.18
+    marker.add(ring, pin)
+    marker.visible = false
+    scene.add(marker)
+    markerRef.current = marker
+
+    // Click (not drag) on the floor → choose placement point.
+    const raycaster = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    let downX = 0
+    let downY = 0
+    const onPointerDown = (e: PointerEvent) => {
+      downX = e.clientX
+      downY = e.clientY
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return // was a drag (orbit)
+      const rect = renderer.domElement.getBoundingClientRect()
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(ndc, camera)
+      const pt = new THREE.Vector3()
+      if (!raycaster.ray.intersectPlane(floorPlane, pt)) return
+      const x = Math.max(-2.6, Math.min(2.6, pt.x))
+      const z = Math.max(-2.6, Math.min(2.6, pt.z))
+      placementRef.current = { x, z }
+      marker.position.set(x, 0, z)
+      marker.visible = true
+      setPlacementSet(true)
+    }
+    renderer.domElement.addEventListener('pointerdown', onPointerDown)
+    renderer.domElement.addEventListener('pointerup', onPointerUp)
+
     let raf = 0
     const animate = () => {
       raf = requestAnimationFrame(animate)
@@ -122,6 +171,8 @@ export function RoomStudio() {
     window.addEventListener('resize', onResize)
     return () => {
       window.removeEventListener('resize', onResize)
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown)
+      renderer.domElement.removeEventListener('pointerup', onPointerUp)
       cancelAnimationFrame(raf)
       controls.dispose()
       renderer.dispose()
@@ -202,8 +253,17 @@ export function RoomStudio() {
         c.receiveShadow = true
       }
     })
-    const i = addedCountRef.current++
-    obj.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
+    const place = placementRef.current
+    if (place) {
+      obj.position.set(place.x, 0, place.z)
+      // consume the placement marker
+      placementRef.current = null
+      if (markerRef.current) markerRef.current.visible = false
+      setPlacementSet(false)
+    } else {
+      const i = addedCountRef.current++
+      obj.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
+    }
     scene.add(obj)
     return obj
   }, [])
@@ -341,6 +401,9 @@ export function RoomStudio() {
     addedObjectsRef.current.forEach((o) => scene?.remove(o))
     addedObjectsRef.current.clear()
     addedCountRef.current = 0
+    placementRef.current = null
+    if (markerRef.current) markerRef.current.visible = false
+    setPlacementSet(false)
     setImageData(null)
     setItems([])
     setActivity(null)
@@ -455,9 +518,16 @@ export function RoomStudio() {
           </AnimatePresence>
 
           {phase === 'room' && (
-            <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-[#6b6b6b]">
-              drag to orbit · scroll to zoom
-            </p>
+            <>
+              <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-[#6b6b6b]">
+                drag to orbit · scroll to zoom · click the floor to place
+              </p>
+              {placementSet && (
+                <div className="pointer-events-none absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-[#ff22cc] px-3 py-1.5 text-xs font-medium text-white">
+                  <span className="h-2 w-2 rounded-full bg-white" /> placement set
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -560,7 +630,13 @@ export function RoomStudio() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
               disabled={phase !== 'room' || busy}
-              placeholder={phase === 'room' ? 'Add a walnut coffee table…' : 'Generate a room first'}
+              placeholder={
+                phase !== 'room'
+                  ? 'Generate a room first'
+                  : placementSet
+                    ? 'What goes on this spot?'
+                    : 'Click the floor, then add a piece…'
+              }
               className="flex-1 bg-transparent text-base text-[#ffffff] placeholder-[#ffffff]/50 outline-none disabled:opacity-60"
             />
             <button
