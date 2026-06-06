@@ -1,40 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { RoomStudio } from '../components/RoomStudio'
 
 export default function StudioPage() {
   return (
-    <main className="min-h-screen bg-white px-6 pb-20 pt-6 text-[#111]">
-      {/* top nav — eventual style: mono, lowercase, magenta square */}
-      <nav className="mx-auto flex max-w-6xl items-center justify-between text-sm lowercase tracking-tight">
-        <Link href="/studio" className="flex items-center gap-1 font-semibold">
+    <main className="flex h-screen flex-col overflow-hidden bg-white text-[#111]">
+      {/* slim top bar — eventual style */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#111]/10 px-6">
+        <Link href="/studio" className="flex items-center gap-1 text-sm font-semibold lowercase tracking-tight">
           roomswarm<span className="accent-square" />
         </Link>
-        <div className="flex items-center gap-8 text-[#111]">
-          <Link href="/studio" className="hover:text-[var(--accent)]">studio</Link>
-          <Link href="/gallery" className="hover:text-[var(--accent)]">saved rooms</Link>
+        <div className="hidden items-baseline gap-2 text-[13px] text-gray-500 sm:flex">
+          <span className="text-[#111]">photo</span>
+          <span className="text-gray-300">→</span>
+          <span className="text-[#111]">3d room</span>
+          <span className="text-gray-300">→</span>
+          <span className="text-[#ff22cc]">furnished by a swarm</span>
         </div>
-      </nav>
+        <nav className="flex items-center gap-6 text-[13px] lowercase">
+          <Link href="/studio" className="hover:text-[#ff22cc]">studio</Link>
+          <Link href="/gallery" className="hover:text-[#ff22cc]">saved rooms</Link>
+        </nav>
+      </header>
 
-      <div className="mx-auto max-w-6xl">
-        {/* hero */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="py-14 text-center"
-        >
-          <h1 className="serif text-6xl leading-[1.05] tracking-tight text-[#111] md:text-7xl">
-            Furnish it with a swarm
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-[#444] md:text-base">
-            Upload a photo of your room. We rebuild it in 3D, then a swarm of agents shops the real
-            web to furnish it — just ask.
-          </p>
-        </motion.div>
-
+      {/* workspace fills the rest of the viewport (explicit height so the 3D canvas resolves) */}
+      <div className="h-[calc(100vh-3.5rem)] w-full">
         <RoomStudio />
       </div>
     </main>

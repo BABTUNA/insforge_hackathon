@@ -293,148 +293,156 @@ export function RoomStudio() {
 
   // --- Render --------------------------------------------------------------
   return (
-    <div className="relative w-full">
-      {/* The 3D canvas is always mounted; overlays sit on top before a room exists */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="relative h-[600px] overflow-hidden rounded-none border border-[#e5e5e5] bg-[#fafafa] shadow-sm">
-          <div ref={hostRef} className="h-full w-full" />
+    <div className="flex h-full w-full flex-col lg:flex-row">
+      {/* 3D viewport — dominant, fills available space */}
+      <div className="relative min-h-[56vh] flex-1 bg-[#fafafa] lg:min-h-0">
+        <div ref={hostRef} className="absolute inset-0 h-full w-full" />
 
-          {/* Upload / generating overlay */}
-          <AnimatePresence>
-            {phase !== 'room' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-[#ffffff]/85 backdrop-blur-sm"
-              >
-                {phase === 'generating' ? (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#ff22cc]" />
-                    <p className="serif text-xl text-[#111111]">{statusMsg}</p>
-                    <p className="text-xs text-gray-400">Claude is rebuilding every object as 3D geometry — this takes ~a minute.</p>
-                  </div>
-                ) : (
-                  <div className="w-full max-w-md px-6 text-center">
-                    <h3 className="serif text-2xl text-[#111111]">Start with a photo of your room</h3>
-                    <p className="mt-2 text-sm text-gray-500">
-                      Upload a room photo and we&apos;ll rebuild it as an explorable 3D scene.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileRef.current?.click()}
-                      className="mt-6 flex h-48 w-full flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed border-[#d4d4d4] bg-white/70 text-gray-500 transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
-                    >
-                      {imageData ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={imageData} alt="room" className="h-full w-full rounded-none object-cover" />
-                      ) : (
-                        <>
-                          <Upload className="h-6 w-6" />
-                          <span className="text-sm font-medium">Drop or click to upload</span>
-                          <span className="text-xs text-gray-400">JPEG or PNG</span>
-                        </>
-                      )}
-                    </button>
-                    <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-                    {statusMsg && <p className="mt-3 text-sm text-rose-500">{statusMsg}</p>}
-                    <button
-                      onClick={generateRoom}
-                      disabled={!imageData}
-                      className="mt-6 inline-flex items-center gap-2 rounded-none bg-[#ff22cc] px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-colors hover:bg-[#d600a8] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Sparkles className="h-4 w-4" /> Generate my room in 3D
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* Upload / generating overlay */}
+        <AnimatePresence>
+          {phase !== 'room' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center bg-white/90 px-6 backdrop-blur-sm"
+            >
+              {phase === 'generating' ? (
+                <div className="flex max-w-sm flex-col items-center gap-5 text-center">
+                  <Loader2 className="h-7 w-7 animate-spin text-[#ff22cc]" />
+                  <p className="serif text-2xl leading-snug text-[#111]">{statusMsg}</p>
+                  <p className="text-xs leading-relaxed text-gray-500">
+                    Claude is rebuilding every object as 3D geometry. This takes about a minute.
+                  </p>
+                </div>
+              ) : (
+                <div className="w-full max-w-sm">
+                  <p className="mono text-[11px] uppercase tracking-[0.2em] text-[#ff22cc]">step 01</p>
+                  <h3 className="serif mt-2 text-3xl leading-tight text-[#111]">Upload a room photo</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-500">
+                    We rebuild it as an explorable 3D scene you can furnish.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="mt-6 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 border border-dashed border-[#cfcfcf] bg-white text-gray-500 transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
+                  >
+                    {imageData ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imageData} alt="room" className="h-full w-full object-cover" />
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6" />
+                        <span className="text-sm font-medium">Drop or click to upload</span>
+                        <span className="text-xs text-gray-400">JPEG or PNG</span>
+                      </>
+                    )}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+                  {statusMsg && <p className="mt-3 text-sm text-rose-500">{statusMsg}</p>}
+                  <button
+                    onClick={generateRoom}
+                    disabled={!imageData}
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 bg-[#ff22cc] px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#d600a8] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Sparkles className="h-4 w-4" /> Generate my room in 3D
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          {phase === 'room' && (
+        {phase === 'room' && (
+          <>
             <button
               onClick={reset}
-              className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-none bg-white/85 px-4 py-2 text-xs font-medium text-gray-600 shadow backdrop-blur hover:text-[#d600a8]"
+              className="absolute right-4 top-4 inline-flex items-center gap-1.5 border border-[#111]/15 bg-white/90 px-4 py-2 text-xs font-medium text-gray-700 backdrop-blur transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
             >
               <RotateCcw className="h-3.5 w-3.5" /> New room
             </button>
-          )}
-        </div>
-
-        {/* Chat panel */}
-        <div className="flex h-[600px] flex-col rounded-none border border-[#e5e5e5] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#e5e5e5] px-5 py-4">
-            <div>
-              <h3 className="serif text-lg text-[#111111]">Design with the swarm</h3>
-              <p className="text-xs text-gray-400">Ask for furniture; agents shop the web for it.</p>
-            </div>
-            <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-400">
-              <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#ff22cc]" />
-              mock
-            </label>
-          </div>
-
-          <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-            {phase !== 'room' && (
-              <p className="mt-10 text-center text-sm text-gray-400">Generate a room first, then chat to furnish it.</p>
-            )}
-            {messages.map((m) => (
-              <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                <div
-                  className={`max-w-[85%] rounded-none px-4 py-2.5 text-sm ${
-                    m.role === 'user' ? 'bg-[#ff22cc] text-white' : 'bg-[#f5f5f5] text-[#111111]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {m.status === 'researching' && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff22cc]" />}
-                    <span>{m.text}</span>
-                  </div>
-                  {m.product && (
-                    <a
-                      href={m.product.product_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 flex gap-3 rounded-none bg-white p-2 shadow-sm"
-                    >
-                      <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-none bg-[#f5f5f5]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.product.image_url} alt={m.product.name} className="h-full w-full object-cover" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-medium text-[#111111]">{m.product.name}</div>
-                        <div className="text-xs font-semibold text-[#ff22cc]">
-                          ${Math.round(m.product.price_usd).toLocaleString()}
-                        </div>
-                        <div className="truncate text-[10px] text-gray-400">{m.product.retailer} →</div>
-                      </div>
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t border-[#e5e5e5] p-3">
-            <div className="flex items-center gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && send()}
-                disabled={phase !== 'room' || busy}
-                placeholder={phase === 'room' ? 'Add a walnut coffee table…' : 'Generate a room first'}
-                className="flex-1 rounded-none border border-[#e5e5e5] bg-[#fafafa] px-4 py-2.5 text-sm outline-none focus:border-[#ff22cc] disabled:opacity-50"
-              />
-              <button
-                onClick={send}
-                disabled={phase !== 'room' || busy || !input.trim()}
-                className="flex h-10 w-10 items-center justify-center rounded-none bg-[#ff22cc] text-white transition-colors hover:bg-[#d600a8] disabled:opacity-40"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-        </div>
+            <p className="mono pointer-events-none absolute bottom-4 left-4 text-[11px] text-gray-400">
+              drag to orbit · scroll to zoom
+            </p>
+          </>
+        )}
       </div>
+
+      {/* Chat sidebar */}
+      <aside className="flex h-[44vh] w-full shrink-0 flex-col border-t border-[#111]/10 bg-white lg:h-auto lg:w-[400px] lg:border-l lg:border-t-0">
+        <div className="flex items-center justify-between border-b border-[#111]/10 px-5 py-4">
+          <div>
+            <h3 className="serif text-lg text-[#111]">Design with the swarm</h3>
+            <p className="text-[11px] text-gray-400">Ask for furniture — agents shop the web for it.</p>
+          </div>
+          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-400">
+            <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#ff22cc]" />
+            mock
+          </label>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+          {phase !== 'room' && (
+            <p className="mt-10 text-center text-sm text-gray-400">
+              Generate a room first, then chat here to furnish it.
+            </p>
+          )}
+          {messages.map((m) => (
+            <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+              <div
+                className={`max-w-[88%] px-4 py-2.5 text-sm ${
+                  m.role === 'user' ? 'bg-[#ff22cc] text-white' : 'bg-[#f5f5f5] text-[#111]'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {m.status === 'researching' && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ff22cc]" />}
+                  <span>{m.text}</span>
+                </div>
+                {m.product && (
+                  <a
+                    href={m.product.product_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex gap-3 border border-[#111]/10 bg-white p-2"
+                  >
+                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden bg-[#f5f5f5]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.product.image_url} alt={m.product.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-medium text-[#111]">{m.product.name}</div>
+                      <div className="text-xs font-semibold text-[#ff22cc]">
+                        ${Math.round(m.product.price_usd).toLocaleString()}
+                      </div>
+                      <div className="truncate text-[10px] text-gray-400">{m.product.retailer} →</div>
+                    </div>
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-[#111]/10 p-3">
+          <div className="flex items-center gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && send()}
+              disabled={phase !== 'room' || busy}
+              placeholder={phase === 'room' ? 'Add a walnut coffee table…' : 'Generate a room first'}
+              className="flex-1 border border-[#e5e5e5] bg-[#fafafa] px-4 py-2.5 text-sm outline-none focus:border-[#ff22cc] disabled:opacity-50"
+            />
+            <button
+              onClick={send}
+              disabled={phase !== 'room' || busy || !input.trim()}
+              className="flex h-10 w-10 items-center justify-center bg-[#ff22cc] text-white transition-colors hover:bg-[#d600a8] disabled:opacity-40"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </aside>
     </div>
   )
 }
