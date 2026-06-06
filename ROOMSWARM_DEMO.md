@@ -1,46 +1,36 @@
 # RoomSwarm — Demo Runbook
 
-**One-liner:** Describe your taste + budget, and a *fleet of autonomous agents shops the
-real web in parallel* to furnish your room with real, in-stock, buyable products.
+**One-liner:** Upload a photo of your room → it's rebuilt as an explorable 3D scene →
+chat with a swarm of agents that shop the real web to furnish it.
 
-**Sponsor fit:** Replicas is the engine (parallel agent fleet doing real web work);
-InsForge persists every furnished room (Postgres) and powers the Saved Rooms gallery.
+**Sponsor fit:**
+- **Replicas** — autonomous agents shop real retailers for the furniture you ask for.
+- **InsForge** — AI gateway powers the vision room-generation + furniture modeling;
+  Postgres + gallery persist saved rooms.
 
 ## Before the demo
-1. Dev server running: `cd ~/roomswarm/artspace-interior/artspace-ui && node node_modules/next/dist/bin/next dev -p 3000`
+1. Dev server: `cd ~/roomswarm/artspace-interior/artspace-ui && node node_modules/next/dist/bin/next dev -p 3000`
 2. Open **http://localhost:3000/studio**
-3. Have a floorplan/room image ready to upload (any image works).
-4. Decide: **live run** (real agents, ~60–90s, costs a few $) or **simulated demo** (instant, offline-safe).
+3. Have a room photo ready (`bed.jpg` in the repo root works).
 
-## The 90-second script
-1. **Studio** → upload a room image → *Continue*.
-2. **Style quiz** → click 3 style cards (e.g. Scandinavian, Mid-Century, Coastal).
-3. **Budget** → set a budget (e.g. $3,000).
-4. Click **"Furnish my room → launch 6 agents."**
-5. **The wow:** the swarm board lights up — 6 agent cards, each shopping a different
-   piece in parallel (`Searching IKEA… → Reading a product page… → Found ✓`), product
-   thumbnails + prices popping in live, the cart total climbing.
-6. When done: real products, real prices, real buy links, total cost — auto-saved.
-7. Click **"View your room in 3D"** → the room renders with **AI-generated 3D furniture**
-   models (each generated on the fly via InsForge's AI gateway). Drag to orbit.
-8. Click **gallery** → show the **Saved Rooms** page (InsForge persistence).
+## The flow
+1. **Upload a room photo** → **"Generate my room in 3D."**
+   Claude Vision (via InsForge's AI gateway) rebuilds every object as real 3D geometry
+   (`createCompleteRoom()` — walls, floor, furniture, lights). Takes ~1 minute. Drag to orbit.
+2. **Chat to furnish.** In the panel, type what you want — e.g. *"add a walnut
+   mid-century coffee table."* An agent shops the web for it, shows the real product,
+   and the piece is built into your 3D room.
+3. **Saved Rooms** (`/gallery`) — persisted designs in InsForge.
 
-## How the 3D works
-Each furniture piece's 3D model is generated at runtime: `/api/generate-3d` asks an
-LLM (through InsForge's AI gateway / OpenRouter) to write Three.js code for that
-piece, which is rendered in the room. Results are cached, and a built-in parametric
-fallback guarantees a model even if generation fails — so the room is never empty.
+## Safety / demo mode
+- **mock toggle** (top-right of the chat panel): returns a real canned product instantly
+  and still builds the 3D model — no live agents, no network needed. Use if the venue
+  Wi-Fi or Replicas is flaky.
+- Room generation and furniture modeling both fall back to built-in 3D if the AI call
+  fails, so the room is never empty.
 
-## Safety nets (don't get caught out)
-- **Per-slot fallback:** if any live agent times out, it's filled with a real canned
-  product so the room is *always* fully furnished — never a hole on screen.
-- **Simulated demo:** on the budget screen, "Run simulated demo (no live agents)"
-  replays the full staggered swarm with canned products in ~13s. Use if the venue
-  Wi-Fi or Replicas is flaky. (Or hit `POST /api/fleet/start` with `{"demo":true}`.)
-
-## If asked "how does it work?"
-- One Replicas agent per furniture slot, spawned in parallel via the Replicas CLI.
-- Each agent has a browser + internet; it searches real retailers, opens product
-  pages, and returns structured JSON (name, price, retailer, url, image, why).
-- The server streams each agent's live status to the board over SSE.
-- The finished design is written to InsForge Postgres; the gallery reads it back.
+## How the 3D works (the original method)
+The photo is sent to `/api/generate-complete-room`, where an LLM with vision writes
+Three.js code that constructs the whole room as geometry. Added furniture uses
+`/api/generate-3d` (LLM writes a `createFurniture()` model), injected into the live scene.
+Both run through InsForge's AI gateway (OpenRouter).
