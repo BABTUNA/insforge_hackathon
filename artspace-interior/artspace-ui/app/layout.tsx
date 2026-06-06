@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Playfair_Display, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-mono",
 });
 
 const playfair = Playfair_Display({
@@ -15,8 +15,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "ArtSpace — Spatial Design Studio",
-  description: "Architecture as interface. Compose interiors through AI-guided curation and walk through your vision in 3D.",
+  title: "RoomSwarm — Photo to 3D, furnished by agents",
+  description: "Upload a room photo, get a 3D scene, and let a swarm of agents shop the real web to furnish it.",
 };
 
 export default function RootLayout({
@@ -26,9 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.variable} ${playfair.variable} font-sans antialiased`}
-      >
+      <body className={`${mono.variable} ${playfair.variable} antialiased`}>
         {children}
       </body>
     </html>

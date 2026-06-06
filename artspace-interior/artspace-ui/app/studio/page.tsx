@@ -6,27 +6,33 @@ import { RoomStudio } from '../components/RoomStudio'
 
 export default function StudioPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#f9f7f3] to-[#fefdfc] px-6 py-12 text-[#1a1a1a]">
+    <main className="min-h-screen bg-white px-6 pb-20 pt-6 text-[#111]">
+      {/* top nav — eventual style: mono, lowercase, magenta square */}
+      <nav className="mx-auto flex max-w-6xl items-center justify-between text-sm lowercase tracking-tight">
+        <Link href="/studio" className="flex items-center gap-1 font-semibold">
+          roomswarm<span className="accent-square" />
+        </Link>
+        <div className="flex items-center gap-8 text-[#111]">
+          <Link href="/studio" className="hover:text-[var(--accent)]">studio</Link>
+          <Link href="/gallery" className="hover:text-[var(--accent)]">saved rooms</Link>
+        </div>
+      </nav>
+
       <div className="mx-auto max-w-6xl">
+        {/* hero */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8 flex items-end justify-between"
+          className="py-14 text-center"
         >
-          <div>
-            <h1 className="serif text-4xl leading-tight text-[#1a1a1a]">Compose Your Interior</h1>
-            <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-500">
-              Upload a photo of your room. We rebuild it in 3D, then a swarm of agents shops the
-              real web to furnish it — just ask.
-            </p>
-          </div>
-          <Link
-            href="/gallery"
-            className="rounded-lg border-2 border-[#c7a564] px-5 py-2.5 text-sm font-semibold text-[#a6803f] transition-colors hover:bg-[#c7a564] hover:text-white"
-          >
-            Saved Rooms
-          </Link>
+          <h1 className="serif text-6xl leading-[1.05] tracking-tight text-[#111] md:text-7xl">
+            Furnish it with a swarm
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-[#444] md:text-base">
+            Upload a photo of your room. We rebuild it in 3D, then a swarm of agents shops the real
+            web to furnish it — just ask.
+          </p>
         </motion.div>
 
         <RoomStudio />
