@@ -19,11 +19,30 @@ export function FurnishPanel({ selectedStyles }: FurnishPanelProps) {
   const [slots, setSlots] = useState<SlotView[]>([])
   const [summary, setSummary] = useState<{ found: number; total: number } | null>(null)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState<'idle' | 'saving' | 'saved'>('idle')
   const cleanupRef = useRef<(() => void) | null>(null)
+
+  const saveDesign = async (finalSlots: SlotView[], sum: { found: number; total: number }) => {
+    setSaved('saving')
+    try {
+      const items = finalSlots
+        .filter((s) => s.status === 'done' && s.result)
+        .map((s) => ({ key: s.key, label: s.label, icon: s.icon, result: s.result }))
+      await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ styles: selectedStyles, budget, total: sum.total, found: sum.found, items }),
+      })
+      setSaved('saved')
+    } catch {
+      setSaved('idle')
+    }
+  }
 
   const launch = async () => {
     setError('')
     setSummary(null)
+    setSaved('idle')
     setPhase('running')
     try {
       const res = await startFleet({ styles: selectedStyles, budget, fleetSize: FLEET_SIZE })
@@ -34,6 +53,7 @@ export function FurnishPanel({ selectedStyles }: FurnishPanelProps) {
           setSlots(s)
           setSummary(sum)
           setPhase('done')
+          void saveDesign(s, sum)
         },
         onError: (msg) => setError(msg),
       })
@@ -118,10 +138,24 @@ export function FurnishPanel({ selectedStyles }: FurnishPanelProps) {
             animate={{ opacity: 1, y: 0 }}
             className="mt-8 flex flex-col items-center gap-4 border-t border-[#ece6da] pt-6 sm:flex-row sm:justify-between"
           >
-            <p className="text-sm text-gray-600">
-              Fleet complete — <span className="font-semibold text-[#1a1a1a]">{summary?.found}</span> real pieces
-              sourced for <span className="font-semibold text-[#c7a564]">${summary?.total.toLocaleString()}</span>.
-            </p>
+            <div className="text-sm text-gray-600">
+              <p>
+                Fleet complete — <span className="font-semibold text-[#1a1a1a]">{summary?.found}</span> real pieces
+                sourced for <span className="font-semibold text-[#c7a564]">${summary?.total.toLocaleString()}</span>.
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                {saved === 'saving' && 'Saving design to InsForge…'}
+                {saved === 'saved' && (
+                  <>
+                    Saved to your{' '}
+                    <a href="/gallery" className="font-medium text-[#a6803f] underline underline-offset-2">
+                      gallery
+                    </a>
+                    .
+                  </>
+                )}
+              </p>
+            </div>
             <button
               onClick={reset}
               className="rounded-lg border-2 border-[#c7a564] px-6 py-2.5 text-sm font-semibold text-[#a6803f] transition-colors hover:bg-[#c7a564] hover:text-white"

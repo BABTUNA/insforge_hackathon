@@ -80,3 +80,6 @@ chroma_data/
 artspace-interior/artspace-ui/assets/generated/
 *.crdownload
 
+
+# InsForge project credentials (contains admin api_key)
+.insforge/
