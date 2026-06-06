@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react'
 import { FALLBACK_ROOM } from '@/lib/three/fallback-room'
+import { fallbackCode } from '@/lib/three/fallback-furniture'
 
 type Phase = 'upload' | 'generating' | 'room'
 
@@ -278,25 +279,31 @@ export function RoomStudio() {
   )
 
   const addFurniture = useCallback(
-    (code: string | null | undefined, pos?: { x: number; z: number }): THREE.Object3D | null => {
+    (code: string | null | undefined, pos?: { x: number; z: number }, typeHint?: string): THREE.Object3D | null => {
     const scene = sceneRef.current
     if (!scene) return null
 
-    // Try the (AI-generated) code; if it's broken or missing, never throw —
-    // fall back to a simple primitive so a piece always lands in the room.
-    let obj: unknown = null
-    if (code) {
+    // Evaluate a createFurniture() code string; returns null on any failure.
+    const run = (src: string): THREE.Object3D | null => {
       try {
         const factory = new Function(
           'THREE',
-          `${code}\nif (typeof createFurniture === 'function') return createFurniture();\nreturn null;`
+          `${src}\nif (typeof createFurniture === 'function') return createFurniture();\nreturn null;`
         )
-        obj = factory(THREE)
-      } catch (err) {
-        console.warn('[addFurniture] generated code failed to run → using primitive', err)
+        const r = factory(THREE)
+        return r instanceof THREE.Object3D ? r : null
+      } catch {
+        return null
       }
     }
-    if (!(obj instanceof THREE.Object3D)) {
+
+    // 1) AI code → 2) parametric model for the requested category → 3) primitive.
+    let obj: THREE.Object3D | null = code ? run(code) : null
+    if (!obj) {
+      console.warn('[addFurniture] generated code unusable → parametric fallback')
+      obj = run(fallbackCode(typeHint || ''))
+    }
+    if (!obj) {
       const g = new THREE.Group()
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(0.8, 0.8, 0.8),
@@ -357,7 +364,7 @@ export function RoomStudio() {
           const id = itemId++
           const pos =
             typeof it.x === 'number' && typeof it.z === 'number' ? { x: it.x, z: it.z } : undefined
-          const obj = addFurniture((it.code as string) ?? null, pos)
+          const obj = addFurniture((it.code as string) ?? null, pos, (it.label as string) || r.name)
           if (obj) addedObjectsRef.current.set(id, obj)
           loaded.push({
             ...r,
@@ -465,7 +472,7 @@ export function RoomStudio() {
       })
       const genData = await gen.json().catch(() => ({}))
       const id = itemId++
-      const obj = addFurniture(genData.code)
+      const obj = addFurniture(genData.code, undefined, q)
       if (obj) addedObjectsRef.current.set(id, obj)
       setItems((prev) => [
         ...prev,

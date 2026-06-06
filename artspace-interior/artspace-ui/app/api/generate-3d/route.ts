@@ -38,11 +38,23 @@ RULES:
 7. Self-contained. No external variables. Do not call createFurniture yourself.`
 }
 
+function balanced(code: string): boolean {
+  let depth = 0
+  for (const ch of code) {
+    if (ch === '{') depth++
+    else if (ch === '}') depth--
+    if (depth < 0) return false
+  }
+  return depth === 0
+}
+
 function extractCode(text: string): string | null {
   const clean = text.replace(/```(?:javascript|js)?/gi, '').replace(/```/g, '').trim()
   const m = clean.match(/function\s+createFurniture[\s\S]*\}\s*$/)
   const code = m ? m[0] : clean
-  return code.includes('createFurniture') && code.includes('return') ? code : null
+  // Reject truncated/unbalanced output so the caller can use a clean fallback.
+  if (!code.includes('createFurniture') || !code.includes('return') || !balanced(code)) return null
+  return code
 }
 
 async function generateWithAI(b: Body): Promise<string | null> {
@@ -54,11 +66,11 @@ async function generateWithAI(b: Body): Promise<string | null> {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 2000,
+        max_tokens: 4000,
         temperature: 0.6,
         messages: [{ role: 'user', content: buildPrompt(b) }],
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(40_000),
     })
     if (!res.ok) return null
     const data = await res.json()
