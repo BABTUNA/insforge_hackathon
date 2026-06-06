@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Check,
 } from 'lucide-react'
+import { FALLBACK_ROOM } from '@/lib/three/fallback-room'
 
 type Phase = 'upload' | 'generating' | 'room'
 
@@ -193,21 +194,36 @@ export function RoomStudio() {
   }, [])
 
   // --- scene helpers -------------------------------------------------------
+  // Frame the room for a clean "dollhouse" 3/4 view from outside-front-above.
   const fitCamera = useCallback((obj: THREE.Object3D) => {
     const camera = cameraRef.current
     const controls = controlsRef.current
+    const host = hostRef.current
+    const renderer = rendererRef.current
     if (!camera || !controls) return
+
+    // Make sure the aspect ratio is correct first (matters when loading on mount).
+    if (host && renderer) {
+      const w = host.clientWidth || 800
+      const h = host.clientHeight || 600
+      renderer.setSize(w, h)
+      camera.aspect = w / h
+    }
+
     const box = new THREE.Box3().setFromObject(obj)
-    if (box.isEmpty()) return
-    const size = new THREE.Vector3()
-    const center = new THREE.Vector3()
-    box.getSize(size)
-    box.getCenter(center)
-    const maxDim = Math.max(size.x, size.y, size.z)
-    const dist = (maxDim / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.5
-    const dir = new THREE.Vector3(0.7, 0.5, 0.9).normalize()
+    const center = new THREE.Vector3(0, 1, 0)
+    let maxDim = 6
+    if (!box.isEmpty()) {
+      const size = new THREE.Vector3()
+      box.getSize(size)
+      box.getCenter(center)
+      maxDim = Math.max(size.x, size.y, size.z) || 6
+    }
+    const dist = (maxDim / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7
+    const dir = new THREE.Vector3(0.55, 0.55, 1).normalize()
     camera.position.copy(center.clone().add(dir.multiplyScalar(dist)))
-    camera.far = Math.max(500, dist * 5)
+    camera.near = 0.1
+    camera.far = Math.max(500, dist * 6)
     camera.updateProjectionMatrix()
     controls.target.copy(center)
     controls.update()
@@ -221,22 +237,33 @@ export function RoomStudio() {
         scene.remove(roomRootRef.current)
         roomRootRef.current = null
       }
-      const root = new THREE.Group()
-      const factory = new Function(
-        'THREE',
-        `${code}\nif (typeof createCompleteRoom === 'function') return createCompleteRoom();\nreturn null;`
-      )
-      const result = factory(THREE)
-      if (result instanceof THREE.Scene) {
-        while (result.children.length) {
-          const child = result.children.shift()
-          if (child) root.add(child)
-        }
-      } else if (result instanceof THREE.Object3D) {
-        root.add(result)
-      } else {
-        throw new Error('Room code returned no scene')
+
+      const build = (src: string): THREE.Object3D[] => {
+        const factory = new Function(
+          'THREE',
+          `${src}\nif (typeof createCompleteRoom === 'function') return createCompleteRoom();\nreturn null;`
+        )
+        const result = factory(THREE)
+        if (result instanceof THREE.Scene) return [...result.children]
+        if (result instanceof THREE.Object3D) return [result]
+        return []
       }
+
+      const root = new THREE.Group()
+      let children: THREE.Object3D[] = []
+      try {
+        children = build(code)
+      } catch (err) {
+        console.warn('[injectRoom] room code failed → fallback room', err)
+      }
+      if (children.length === 0) {
+        try {
+          children = build(FALLBACK_ROOM)
+        } catch {
+          /* give up gracefully */
+        }
+      }
+      children.forEach((c) => root.add(c))
       root.traverse((c) => {
         if ((c as THREE.Mesh).isMesh) {
           c.castShadow = true

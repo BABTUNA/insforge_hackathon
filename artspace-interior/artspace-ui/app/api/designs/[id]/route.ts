@@ -15,3 +15,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!design) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(design)
 }
+
+// Delete a saved design.
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params
+  const { error } = await insforgeAdmin.database.from('designs').delete().eq('id', id)
+  if (error) {
+    return NextResponse.json({ error: error.message || 'Delete failed' }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true })
+}

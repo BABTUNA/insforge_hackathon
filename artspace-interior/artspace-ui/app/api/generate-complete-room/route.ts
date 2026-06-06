@@ -27,7 +27,7 @@ CRITICAL — FIDELITY:
 
 REQUIREMENTS:
 1. Define a function createCompleteRoom() that returns a THREE.Scene.
-2. Build the room structure (floor, walls, ceiling) sized to match the photo's proportions, ~6m x 6m x 3m.
+2. Build an OPEN "dollhouse" shell so it can be viewed from outside: a floor, a BACK wall, and ONE side (left) wall only. Do NOT add a ceiling, a front wall, or a right wall. Size it to the photo's proportions, ~6m x 6m x 3m, walls centered on the origin (floor centered at 0,0,0).
 3. For each object that IS visible, recreate it with built-in geometries only (Box, Cylinder, Sphere, Cone, Torus, Plane), positioned and scaled as in the photo, sitting on the floor (lowest point near y=0).
 4. Use MeshStandardMaterial/MeshPhongMaterial with colors matching the photo.
 5. Lighting: AmbientLight + DirectionalLight + PointLights only inside lamps that are actually visible.

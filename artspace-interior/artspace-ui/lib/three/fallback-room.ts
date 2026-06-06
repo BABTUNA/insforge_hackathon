@@ -20,17 +20,9 @@ export const FALLBACK_ROOM = `function createCompleteRoom() {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Ceiling
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(roomWidth, roomDepth),
-    new THREE.MeshStandardMaterial({ color: 0xf2ede3, roughness: 1 })
-  );
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = roomHeight;
-  scene.add(ceiling);
-
-  // Walls
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xece6da, roughness: 0.95 });
+  // Walls — open "dollhouse" layout: back + left only, no ceiling, no front wall,
+  // so the room reads clearly when viewed from outside.
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xece6da, roughness: 0.95, side: THREE.DoubleSide });
   const back = new THREE.Mesh(new THREE.PlaneGeometry(roomWidth, roomHeight), wallMat);
   back.position.set(0, roomHeight / 2, -roomDepth / 2);
   back.receiveShadow = true;
@@ -40,10 +32,6 @@ export const FALLBACK_ROOM = `function createCompleteRoom() {
   left.position.set(-roomWidth / 2, roomHeight / 2, 0);
   left.receiveShadow = true;
   scene.add(left);
-  const right = new THREE.Mesh(new THREE.PlaneGeometry(roomDepth, roomHeight), wallMat);
-  right.rotation.y = -Math.PI / 2;
-  right.position.set(roomWidth / 2, roomHeight / 2, 0);
-  scene.add(right);
 
   // Window on the back wall
   const win = new THREE.Mesh(
