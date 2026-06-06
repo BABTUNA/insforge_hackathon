@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.3,<3
+chromadb
+numpy
+pillow
+torch>=2.6.0
+transformers
+python-dotenv
+certifi
+anthropic
+openai>=1.50.0
