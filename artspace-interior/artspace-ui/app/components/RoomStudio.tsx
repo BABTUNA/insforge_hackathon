@@ -83,7 +83,7 @@ export function RoomStudio() {
     rendererRef.current = renderer
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x201e16)
+    scene.background = new THREE.Color(0xfafafa)
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 500)
@@ -332,19 +332,19 @@ export function RoomStudio() {
       {/* Header row */}
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-[40px] font-semibold leading-none tracking-tight">Studio</h1>
-          <span className="rounded-full bg-white/5 px-3.5 py-1.5 text-base text-[#cdd1a0]">{items.length} pieces</span>
+          <h1 className="serif text-[40px] font-semibold leading-none tracking-tight">Studio</h1>
+          <span className="rounded-full bg-black/[0.04] px-3.5 py-1.5 text-base text-[#ff22cc]">{items.length} pieces</span>
         </div>
 
         {/* phase segmented indicator */}
-        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1 text-base">
+        <div className="flex items-center gap-1 rounded-full border border-black/10 bg-black/[0.035] p-1 text-base">
           {(['upload', 'room'] as const).map((p) => {
             const active = phase === p || (p === 'room' && phase === 'generating')
             return (
               <span
                 key={p}
                 className={`rounded-full px-5 py-2 transition-colors ${
-                  active ? 'bg-[#cdd1a0] font-medium text-[#1a1813]' : 'text-[#8f8c80]'
+                  active ? 'bg-[#ff22cc] font-medium text-[#ffffff]' : 'text-[#6b6b6b]'
                 }`}
               >
                 {p === 'upload' ? 'Upload' : '3D Room'}
@@ -354,14 +354,14 @@ export function RoomStudio() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/10 px-4 py-2.5 text-sm text-[#8f8c80]">
-            <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#cdd1a0]" />
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-black/10 px-4 py-2.5 text-sm text-[#6b6b6b]">
+            <input type="checkbox" checked={mock} onChange={(e) => setMock(e.target.checked)} className="accent-[#ff22cc]" />
             mock
           </label>
           {phase === 'room' && (
             <button
               onClick={reset}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 px-4 py-2.5 text-sm text-[#cfccc2] transition-colors hover:bg-white/5"
+              className="flex items-center gap-1.5 rounded-full border border-black/10 px-4 py-2.5 text-sm text-[#444444] transition-colors hover:bg-black/[0.04]"
             >
               <RotateCcw className="h-4 w-4" /> New room
             </button>
@@ -372,7 +372,7 @@ export function RoomStudio() {
       {/* Main two-column */}
       <div className="mt-5 grid h-[calc(100vh-188px)] min-h-[560px] grid-cols-1 gap-5 lg:grid-cols-[1fr_400px]">
         {/* 3D viewport card */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-[#201e16]">
+        <div className="relative overflow-hidden rounded-3xl border border-black/[0.08] bg-[#fafafa]">
           <div ref={hostRef} className="absolute inset-0 h-full w-full" />
 
           <AnimatePresence>
@@ -381,27 +381,27 @@ export function RoomStudio() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-[#1a1813]/80 px-6 backdrop-blur-sm"
+                className="absolute inset-0 flex items-center justify-center bg-[#ffffff]/80 px-6 backdrop-blur-sm"
               >
                 {phase === 'generating' ? (
                   <div className="flex max-w-md flex-col items-center gap-5 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#cdd1a0]" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#ff22cc]" />
                     <p className="text-2xl font-medium">{statusMsg}</p>
-                    <p className="text-sm leading-relaxed text-[#8f8c80]">
+                    <p className="text-sm leading-relaxed text-[#6b6b6b]">
                       Claude is rebuilding every object as 3D geometry. This takes about a minute.
                     </p>
                   </div>
                 ) : (
-                  <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#211f17] p-8">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#cdd1a0]">Step 01</p>
-                    <h3 className="mt-2 text-3xl font-semibold">Upload a room photo</h3>
-                    <p className="mt-2.5 text-base leading-relaxed text-[#8f8c80]">
+                  <div className="w-full max-w-md rounded-3xl border border-black/10 bg-[#ffffff] p-8">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#ff22cc]">Step 01</p>
+                    <h3 className="serif mt-2 text-3xl font-semibold">Upload a room photo</h3>
+                    <p className="mt-2.5 text-base leading-relaxed text-[#6b6b6b]">
                       We rebuild it as an explorable 3D scene you can furnish.
                     </p>
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="mt-6 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-white/15 bg-black/20 text-[#8f8c80] transition-colors hover:border-[#cdd1a0] hover:text-[#cdd1a0]"
+                      className="mt-6 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-black/10 bg-black/[0.035] text-[#6b6b6b] transition-colors hover:border-[#ff22cc] hover:text-[#ff22cc]"
                     >
                       {imageData ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -419,7 +419,7 @@ export function RoomStudio() {
                     <button
                       onClick={generateRoom}
                       disabled={!imageData}
-                      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#cdd1a0] px-8 py-3.5 text-base font-semibold text-[#1a1813] transition-colors hover:bg-[#d8dcb0] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff22cc] px-8 py-3.5 text-base font-semibold text-[#ffffff] transition-colors hover:bg-[#d600a8] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Sparkles className="h-5 w-5" /> Generate my room in 3D
                     </button>
@@ -430,68 +430,68 @@ export function RoomStudio() {
           </AnimatePresence>
 
           {phase === 'room' && (
-            <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-[#8f8c80]">
+            <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-[#6b6b6b]">
               drag to orbit · scroll to zoom
             </p>
           )}
         </div>
 
         {/* Right panel — furniture (cargo-items style) */}
-        <aside className="flex flex-col rounded-3xl border border-white/[0.06] bg-[#211f17]">
+        <aside className="flex flex-col rounded-3xl border border-black/[0.08] bg-[#ffffff]">
           <div className="flex items-center justify-between px-6 pt-6">
-            <h2 className="text-2xl font-semibold">Your Room</h2>
-            <button className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-[#8f8c80]">
+            <h2 className="serif text-2xl font-semibold">Your Room</h2>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-[#6b6b6b]">
               <MoreHorizontal className="h-5 w-5" />
             </button>
           </div>
 
           {/* summary block */}
-          <div className="mx-6 mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
+          <div className="mx-6 mt-5 grid grid-cols-3 gap-2 rounded-2xl border border-black/10 bg-black/[0.035] p-4 text-sm">
             <div>
-              <div className="text-[#8f8c80]">Source</div>
+              <div className="text-[#6b6b6b]">Source</div>
               <div className="mt-1 font-medium">Photo</div>
             </div>
             <div>
-              <div className="text-[#8f8c80]">Pieces</div>
+              <div className="text-[#6b6b6b]">Pieces</div>
               <div className="mt-1 font-medium">{items.length}</div>
             </div>
             <div>
-              <div className="text-[#8f8c80]">Status</div>
-              <div className="mt-1 font-medium text-[#cdd1a0]">{phase === 'room' ? 'Ready' : 'Setup'}</div>
+              <div className="text-[#6b6b6b]">Status</div>
+              <div className="mt-1 font-medium text-[#ff22cc]">{phase === 'room' ? 'Ready' : 'Setup'}</div>
             </div>
           </div>
 
           {/* furniture list */}
-          <div className="mt-5 px-6 text-sm uppercase tracking-wide text-[#8f8c80]">Furniture added</div>
+          <div className="mt-5 px-6 text-sm uppercase tracking-wide text-[#6b6b6b]">Furniture added</div>
           <div className="dash-scroll mt-2 flex-1 space-y-1.5 overflow-y-auto px-3 pb-2">
             {activity && (
-              <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-3 text-sm text-[#cdd1a0]">
+              <div className="flex items-center gap-2 rounded-xl bg-black/[0.04] px-3 py-3 text-sm text-[#ff22cc]">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="truncate">{activity}</span>
               </div>
             )}
             {items.length === 0 && !activity && (
-              <p className="px-2 py-10 text-center text-sm text-[#6c6a5f]">
+              <p className="px-2 py-10 text-center text-sm text-[#9a9a9a]">
                 {phase === 'room' ? 'Ask the swarm below to add furniture.' : 'Generate a room to start furnishing.'}
               </p>
             )}
             {items.map((it) => (
               <div
                 key={it.id}
-                className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white/[0.04]"
+                className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-black/[0.04]"
               >
-                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-[#cdd1a0]">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-black/[0.08] text-[#ff22cc]">
                   <Box className="h-5 w-5" />
                 </span>
                 <a href={it.product_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-medium">{it.name}</div>
-                  <div className="text-xs text-[#8f8c80]">{it.retailer}</div>
+                  <div className="text-xs text-[#6b6b6b]">{it.retailer}</div>
                 </a>
                 <span className="text-[15px] font-semibold">{money(it.price_usd)}</span>
-                <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#8f8c80]">{it.category}</span>
+                <span className="rounded-md bg-black/[0.08] px-2 py-0.5 text-[11px] text-[#6b6b6b]">{it.category}</span>
                 <button
                   onClick={() => removeItem(it.id)}
-                  className="text-[#6c6a5f] opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
+                  className="text-[#9a9a9a] opacity-0 transition-opacity hover:text-rose-400 group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -500,14 +500,14 @@ export function RoomStudio() {
           </div>
 
           {/* totals */}
-          <div className="mx-6 flex items-end justify-between border-t border-white/10 py-5">
+          <div className="mx-6 flex items-end justify-between border-t border-black/10 py-5">
             <div>
-              <div className="text-xs text-[#8f8c80]">Total Pieces</div>
+              <div className="text-xs text-[#6b6b6b]">Total Pieces</div>
               <div className="text-2xl font-semibold">{items.length}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-[#8f8c80]">Estimated Cost</div>
-              <div className="text-2xl font-semibold text-[#cdd1a0]">{money(total)}</div>
+              <div className="text-xs text-[#6b6b6b]">Estimated Cost</div>
+              <div className="text-2xl font-semibold text-[#ff22cc]">{money(total)}</div>
             </div>
           </div>
 
@@ -515,33 +515,33 @@ export function RoomStudio() {
             <button
               onClick={saveRoom}
               disabled={!items.length}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/15 py-3 text-base font-medium transition-colors hover:bg-white/5 disabled:opacity-40"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-black/10 py-3 text-base font-medium transition-colors hover:bg-black/[0.04] disabled:opacity-40"
             >
-              {saved ? <Check className="h-5 w-5 text-[#cdd1a0]" /> : null}
+              {saved ? <Check className="h-5 w-5 text-[#ff22cc]" /> : null}
               {saved ? 'Saved' : 'Save room'}
             </button>
             <a
               href="/gallery"
-              className="flex flex-1 items-center justify-center rounded-full border border-white/15 py-3 text-base font-medium transition-colors hover:bg-white/5"
+              className="flex flex-1 items-center justify-center rounded-full border border-black/10 py-3 text-base font-medium transition-colors hover:bg-black/[0.04]"
             >
               Gallery
             </a>
           </div>
 
           {/* request bar (olive accent) */}
-          <div className="mx-4 mb-4 flex items-center gap-2 rounded-full bg-[#cdd1a0] p-2 pl-5">
+          <div className="mx-4 mb-4 flex items-center gap-2 rounded-full bg-[#ff22cc] p-2 pl-5">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
               disabled={phase !== 'room' || busy}
               placeholder={phase === 'room' ? 'Add a walnut coffee table…' : 'Generate a room first'}
-              className="flex-1 bg-transparent text-base text-[#1a1813] placeholder-[#1a1813]/50 outline-none disabled:opacity-60"
+              className="flex-1 bg-transparent text-base text-[#ffffff] placeholder-[#ffffff]/50 outline-none disabled:opacity-60"
             />
             <button
               onClick={send}
               disabled={phase !== 'room' || busy || !input.trim()}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a1813] text-[#cdd1a0] transition-opacity disabled:opacity-40"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ffffff] text-[#ff22cc] transition-opacity disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </button>

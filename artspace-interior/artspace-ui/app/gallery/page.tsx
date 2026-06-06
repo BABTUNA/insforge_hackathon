@@ -22,34 +22,34 @@ export default async function GalleryPage() {
   const designs = await getDesigns()
 
   return (
-    <main className="min-h-screen w-full bg-[#1a1813] px-6 py-6 text-[#f4f2ec] sm:px-9">
+    <main className="min-h-screen w-full bg-[#ffffff] px-6 py-6 text-[#111111] sm:px-9">
       <div className="w-full">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-[40px] font-semibold leading-none tracking-tight">Saved Rooms</h1>
-            <span className="rounded-full bg-white/5 px-3.5 py-1.5 text-base text-[#cdd1a0]">{designs.length}</span>
+            <h1 className="serif text-[40px] font-semibold leading-none tracking-tight">Saved Rooms</h1>
+            <span className="rounded-full bg-black/[0.04] px-3.5 py-1.5 text-base text-[#ff22cc]">{designs.length}</span>
           </div>
           <Link
             href="/studio"
-            className="rounded-full bg-[#cdd1a0] px-6 py-3 text-base font-semibold text-[#1a1813] transition-colors hover:bg-[#d8dcb0]"
+            className="rounded-full bg-[#ff22cc] px-6 py-3 text-base font-semibold text-[#ffffff] transition-colors hover:bg-[#d600a8]"
           >
             + Furnish a new room
           </Link>
         </div>
 
         {designs.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-white/15 bg-black/20 p-16 text-center text-[#8f8c80]">
+          <div className="rounded-3xl border border-dashed border-black/10 bg-black/[0.035] p-16 text-center text-[#6b6b6b]">
             No saved rooms yet. Furnish one in the studio to see it here.
           </div>
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             {designs.map((d) => (
-              <div key={d.id} className="rounded-3xl border border-white/[0.06] bg-[#211f17] p-6">
-                <div className="mb-4 flex items-center justify-between text-sm text-[#8f8c80]">
+              <div key={d.id} className="rounded-3xl border border-black/[0.08] bg-[#ffffff] p-6">
+                <div className="mb-4 flex items-center justify-between text-sm text-[#6b6b6b]">
                   <span>
-                    <span className="font-semibold text-[#f4f2ec]">{d.found}</span> pieces
+                    <span className="font-semibold text-[#111111]">{d.found}</span> pieces
                   </span>
-                  <span className="font-semibold text-[#cdd1a0]">{money(d.total)}</span>
+                  <span className="font-semibold text-[#ff22cc]">{money(d.total)}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                   {(d.items ?? []).map((it, i) => (
@@ -60,7 +60,7 @@ export default async function GalleryPage() {
                       rel="noopener noreferrer"
                       className="group block"
                     >
-                      <div className="aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                      <div className="aspect-square overflow-hidden rounded-2xl border border-black/10 bg-black/[0.035]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={it.result?.image_url}
@@ -68,8 +68,8 @@ export default async function GalleryPage() {
                           className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         />
                       </div>
-                      <div className="mt-1.5 truncate text-[11px] font-medium text-[#cfccc2]">{it.label}</div>
-                      <div className="text-[11px] text-[#cdd1a0]">{money(it.result?.price_usd)}</div>
+                      <div className="mt-1.5 truncate text-[11px] font-medium text-[#444444]">{it.label}</div>
+                      <div className="text-[11px] text-[#ff22cc]">{money(it.result?.price_usd)}</div>
                     </a>
                   ))}
                 </div>
