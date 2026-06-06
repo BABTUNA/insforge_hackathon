@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     total?: number
     found?: number
     items?: unknown[]
+    room_code?: string
   }
   try {
     body = await req.json()
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     total: Number(body.total) || 0,
     found: Number(body.found) || 0,
     items: body.items ?? [],
+    room_code: body.room_code ?? null,
   }
 
   const { data, error } = await insforgeAdmin.database.from('designs').insert([row]).select()

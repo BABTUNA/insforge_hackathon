@@ -27,7 +27,7 @@ type Product = {
   why?: string
 }
 
-type Item = Product & { id: number; category: string }
+type Item = Product & { id: number; category: string; code?: string; x?: number; z?: number }
 
 let itemId = 0
 
@@ -53,6 +53,7 @@ export function RoomStudio() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const roomRootRef = useRef<THREE.Group | null>(null)
+  const roomCodeRef = useRef<string>('')
   const addedObjectsRef = useRef<Map<number, THREE.Object3D>>(new Map())
   const addedCountRef = useRef(0)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -249,7 +250,8 @@ export function RoomStudio() {
     [fitCamera]
   )
 
-  const addFurniture = useCallback((code: string | null | undefined): THREE.Object3D | null => {
+  const addFurniture = useCallback(
+    (code: string | null | undefined, pos?: { x: number; z: number }): THREE.Object3D | null => {
     const scene = sceneRef.current
     if (!scene) return null
 
@@ -284,20 +286,76 @@ export function RoomStudio() {
         c.receiveShadow = true
       }
     })
-    const place = placementRef.current
-    if (place) {
-      piece.position.set(place.x, 0, place.z)
-      // consume the placement marker
-      placementRef.current = null
-      if (markerRef.current) markerRef.current.visible = false
-      setPlacementSet(false)
+    if (pos) {
+      piece.position.set(pos.x, 0, pos.z) // explicit (loading a saved room)
     } else {
-      const i = addedCountRef.current++
-      piece.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
+      const place = placementRef.current
+      if (place) {
+        piece.position.set(place.x, 0, place.z)
+        // consume the placement marker
+        placementRef.current = null
+        if (markerRef.current) markerRef.current.visible = false
+        setPlacementSet(false)
+      } else {
+        const i = addedCountRef.current++
+        piece.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
+      }
     }
     scene.add(piece)
     return piece
-  }, [])
+    },
+    []
+  )
+
+  // Resume a saved room when opened via /studio?room=<id>.
+  useEffect(() => {
+    const roomId = new URLSearchParams(window.location.search).get('room')
+    if (!roomId) return
+    let cancelled = false
+    setPhase('generating')
+    setStatusMsg('Loading your saved room…')
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/designs/${roomId}`)
+        if (!res.ok) throw new Error('not found')
+        const d = await res.json()
+        if (cancelled) return
+        if (d.room_code) {
+          roomCodeRef.current = d.room_code
+          injectRoom(d.room_code)
+        }
+        const loaded: Item[] = []
+        for (const it of (d.items as Array<Record<string, unknown>>) ?? []) {
+          const r = (it.result ?? it) as Product
+          const id = itemId++
+          const pos =
+            typeof it.x === 'number' && typeof it.z === 'number' ? { x: it.x, z: it.z } : undefined
+          const obj = addFurniture((it.code as string) ?? null, pos)
+          if (obj) addedObjectsRef.current.set(id, obj)
+          loaded.push({
+            ...r,
+            id,
+            category: (it.label as string) || CATEGORY(r.name || ''),
+            code: (it.code as string) ?? undefined,
+            x: pos?.x,
+            z: pos?.z,
+          })
+        }
+        if (cancelled) return
+        setItems(loaded)
+        setPhase('room')
+        setStatusMsg('')
+      } catch {
+        if (!cancelled) {
+          setStatusMsg('Could not load that room.')
+          setPhase('upload')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [injectRoom, addFurniture])
 
   // --- actions -------------------------------------------------------------
   // Downscale to max 1024px JPEG so the vision API reliably accepts it
@@ -346,6 +404,7 @@ export function RoomStudio() {
       })
       const data = await res.json()
       if (!data.code) throw new Error('No room code returned')
+      roomCodeRef.current = data.code
       injectRoom(data.code)
       setPhase('room')
     } catch (err) {
@@ -381,7 +440,17 @@ export function RoomStudio() {
       const id = itemId++
       const obj = addFurniture(genData.code)
       if (obj) addedObjectsRef.current.set(id, obj)
-      setItems((prev) => [...prev, { ...product, id, category: CATEGORY(q) }])
+      setItems((prev) => [
+        ...prev,
+        {
+          ...product,
+          id,
+          category: CATEGORY(q),
+          code: genData.code,
+          x: obj ? obj.position.x : undefined,
+          z: obj ? obj.position.z : undefined,
+        },
+      ])
     } catch {
       setActivity(null)
     } finally {
@@ -409,10 +478,14 @@ export function RoomStudio() {
           budget: 0,
           total: items.reduce((s, i) => s + (i.price_usd || 0), 0),
           found: items.length,
+          room_code: roomCodeRef.current || null,
           items: items.map((i) => ({
             key: String(i.id),
             label: i.category,
             icon: '🛋️',
+            code: i.code ?? null, // 3D model code, to rebuild on load
+            x: i.x ?? null,
+            z: i.z ?? null,
             result: i,
           })),
         }),

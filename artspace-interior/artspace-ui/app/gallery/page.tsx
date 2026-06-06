@@ -47,9 +47,15 @@ export default async function GalleryPage() {
               <div key={d.id} className="rounded-3xl border border-black/[0.08] bg-[#ffffff] p-6">
                 <div className="mb-4 flex items-center justify-between text-sm text-[#6b6b6b]">
                   <span>
-                    <span className="font-semibold text-[#111111]">{d.found}</span> pieces
+                    <span className="font-semibold text-[#111111]">{d.found}</span> pieces ·{' '}
+                    <span className="font-semibold text-[#ff22cc]">{money(d.total)}</span>
                   </span>
-                  <span className="font-semibold text-[#ff22cc]">{money(d.total)}</span>
+                  <Link
+                    href={`/studio?room=${d.id}`}
+                    className="rounded-full bg-[#ff22cc] px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#d600a8]"
+                  >
+                    Open in studio →
+                  </Link>
                 </div>
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                   {(d.items ?? []).map((it, i) => (
