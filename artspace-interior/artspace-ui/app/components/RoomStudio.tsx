@@ -69,6 +69,7 @@ export function RoomStudio() {
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [placementSet, setPlacementSet] = useState(false)
+  const [dbg, setDbg] = useState('')
 
   // --- Three.js bootstrap --------------------------------------------------
   useEffect(() => {
@@ -136,19 +137,29 @@ export function RoomStudio() {
       downY = e.clientY
     }
     const onPointerUp = (e: PointerEvent) => {
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return // was a drag (orbit)
+      const dist = Math.hypot(e.clientX - downX, e.clientY - downY)
+      if (dist > 6) {
+        setDbg(`drag ${dist.toFixed(0)}px (orbit)`)
+        return // was a drag (orbit)
+      }
       const rect = renderer.domElement.getBoundingClientRect()
       ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(ndc, camera)
       const pt = new THREE.Vector3()
-      if (!raycaster.ray.intersectPlane(floorPlane, pt)) return
+      const hit = raycaster.ray.intersectPlane(floorPlane, pt)
+      console.log('[place] click', { ndc: [ndc.x.toFixed(2), ndc.y.toFixed(2)], hit: hit ? [pt.x.toFixed(2), pt.z.toFixed(2)] : null })
+      if (!hit) {
+        setDbg('click: ray missed floor')
+        return
+      }
       const x = Math.max(-2.6, Math.min(2.6, pt.x))
       const z = Math.max(-2.6, Math.min(2.6, pt.z))
       placementRef.current = { x, z }
       marker.position.set(x, 0, z)
       marker.visible = true
       setPlacementSet(true)
+      setDbg(`placed @ ${x.toFixed(1)}, ${z.toFixed(1)}`)
     }
     renderer.domElement.addEventListener('pointerdown', onPointerDown)
     renderer.domElement.addEventListener('pointerup', onPointerUp)
@@ -522,6 +533,11 @@ export function RoomStudio() {
               <p className="pointer-events-none absolute bottom-4 left-5 text-xs text-[#6b6b6b]">
                 drag to orbit · scroll to zoom · click the floor to place
               </p>
+              {dbg && (
+                <p className="pointer-events-none absolute bottom-4 right-5 rounded bg-black/70 px-2 py-1 font-mono text-[11px] text-[#ff66dd]">
+                  {dbg}
+                </p>
+              )}
               {placementSet && (
                 <div className="pointer-events-none absolute right-4 top-4 flex items-center gap-1.5 rounded-full bg-[#ff22cc] px-3 py-1.5 text-xs font-medium text-white">
                   <span className="h-2 w-2 rounded-full bg-white" /> placement set
