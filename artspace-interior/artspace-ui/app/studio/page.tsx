@@ -187,7 +187,7 @@ export default function StudioPage() {
                 title="Furnish Your Space"
                 description="A swarm of autonomous agents shops the real web — one per furniture piece — to fill your room within budget."
               />
-              <FurnishPanel selectedStyles={selectedStyles} />
+              <FurnishPanel selectedStyles={selectedStyles} floorplanImage={floorplanPreview} />
               <button
                 onClick={handleReset}
                 className="text-sm font-medium text-gray-400 underline-offset-4 hover:text-[var(--accent)] hover:underline"

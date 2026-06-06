@@ -21,7 +21,15 @@ InsForge persists every furnished room (Postgres) and powers the Saved Rooms gal
    piece in parallel (`Searching IKEA… → Reading a product page… → Found ✓`), product
    thumbnails + prices popping in live, the cart total climbing.
 6. When done: real products, real prices, real buy links, total cost — auto-saved.
-7. Click **gallery** → show the **Saved Rooms** page (InsForge persistence).
+7. Click **"View your room in 3D"** → the room renders with **AI-generated 3D furniture**
+   models (each generated on the fly via InsForge's AI gateway). Drag to orbit.
+8. Click **gallery** → show the **Saved Rooms** page (InsForge persistence).
+
+## How the 3D works
+Each furniture piece's 3D model is generated at runtime: `/api/generate-3d` asks an
+LLM (through InsForge's AI gateway / OpenRouter) to write Three.js code for that
+piece, which is rendered in the room. Results are cached, and a built-in parametric
+fallback guarantees a model even if generation fails — so the room is never empty.
 
 ## Safety nets (don't get caught out)
 - **Per-slot fallback:** if any live agent times out, it's filled with a real canned

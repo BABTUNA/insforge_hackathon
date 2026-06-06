@@ -209,7 +209,7 @@ export const ThreeDViewer = ({
 
           if (!furnitureObject) {
             try {
-              const response = await fetch('http://localhost:8000/api/generate-3d', {
+              const response = await fetch('/api/generate-3d', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json'
