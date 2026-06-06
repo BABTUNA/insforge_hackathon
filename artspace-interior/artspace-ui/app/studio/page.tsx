@@ -8,7 +8,7 @@ import { useRef } from 'react'
 import { StepHeader } from '../components/StepHeader'
 import { FloorplanUploader } from '../components/FloorplanUploader'
 import { StyleQuiz } from '../components/StyleQuiz'
-import { ThreeDViewer } from '../components/3DViewer'
+import { FurnishPanel } from '../components/FurnishPanel'
 import { PageTransition } from '../components/PageTransition'
 
 export default function StudioPage() {
@@ -16,7 +16,6 @@ export default function StudioPage() {
   const [floorplan, setFloorplan] = useState<File | null>(null)
   const [floorplanPreview, setFloorplanPreview] = useState('')
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
 
   const handleFloorplanUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -177,49 +176,24 @@ export default function StudioPage() {
           </PageTransition>
 
           <PageTransition isVisible={currentStep === 2}>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center"
+              className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-6"
             >
-              <motion.div 
-                className="flex w-full flex-col gap-8 rounded-2xl border border-[#e6e2da] bg-white p-10 shadow-[0_4px_25px_rgba(0,0,0,0.05)]"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
+              <StepHeader
+                step=""
+                title="Furnish Your Space"
+                description="A swarm of autonomous agents shops the real web — one per furniture piece — to fill your room within budget."
+              />
+              <FurnishPanel selectedStyles={selectedStyles} />
+              <button
+                onClick={handleReset}
+                className="text-sm font-medium text-gray-400 underline-offset-4 hover:text-[var(--accent)] hover:underline"
               >
-                <StepHeader
-                  step=""
-                  title="Inhabit Your Space"
-                  description="Navigate the rendered space in real-time. Iterate with minimal gestures until atmosphere aligns with intent."
-                />
-                <div className="flex-1">
-                  <ThreeDViewer
-                    floorplanImage={floorplanPreview}
-                    selectedStyles={selectedStyles}
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <motion.button 
-                    onClick={handleReset} 
-                    className="border-2 border-[var(--border-strong)] bg-transparent px-8 py-4 text-base font-semibold tracking-wide text-[var(--foreground)] transition-all duration-300 hover:border-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-[var(--background)]"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Reset Studio
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setIsProcessing(true)}
-                    disabled={isProcessing}
-                    className="flex-1 border-2 border-[var(--accent)] bg-transparent px-8 py-4 text-base font-semibold tracking-wide text-[var(--accent)] transition-all duration-300 hover:bg-[var(--accent)] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--accent)]"
-                    whileHover={!isProcessing ? { scale: 1.02 } : {}}
-                    whileTap={!isProcessing ? { scale: 0.98 } : {}}
-                  >
-                    {isProcessing ? 'Composing...' : 'Refine Composition'}
-                  </motion.button>
-                </div>
-              </motion.div>
+                Reset Studio
+              </button>
             </motion.div>
           </PageTransition>
       </div>
