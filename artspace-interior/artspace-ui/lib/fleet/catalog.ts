@@ -16,25 +16,29 @@ type Cat =
   | 'plant'
   | 'bookshelf'
 
-const IMG: Record<Cat, string> = {
-  sofa: 'https://www.ikea.com/us/en/images/products/linanaes-sofa-vissle-beige__1013895_pe829449_s5.jpg?f=u',
-  coffee_table: 'https://www.ikea.com/us/en/images/products/lack-coffee-table-white-stained-oak-effect__0708822_pe726753_s5.jpg?f=u',
-  rug: 'https://www.ikea.com/us/en/images/products/stoense-rug-low-pile-off-white__0488693_pe623670_s5.jpg?f=u',
-  floor_lamp: 'https://www.ikea.com/us/en/images/products/naevlinge-led-floor-reading-lamp-white__0879340_pe610003_s5.jpg?f=u',
-  accent_chair: 'https://www.ikea.com/us/en/images/products/poaeng-armchair-birch-veneer-knisa-light-beige__0571500_pe667008_s5.jpg?f=u',
-  wall_art: 'https://www.ikea.com/us/en/images/products/bjoerksta-picture-with-frame-the-secret-of-color-aluminum-color__0950866_pe801244_s5.jpg?f=u',
-  plant: 'https://www.ikea.com/us/en/images/products/fejka-artificial-potted-plant-in-outdoor-monstera__0614196_pe686818_s5.jpg?f=u',
-  bookshelf: 'https://www.ikea.com/us/en/images/products/billy-bookcase-white__0644293_pe702455_s5.jpg?f=u',
+// Verified-working product photos, keyed by the leading product name.
+const REAL_IMG: Record<string, string> = {
+  LINANÄS: 'https://www.ikea.com/us/en/images/products/linanaes-sofa-vissle-beige__1013895_pe829449_s5.jpg?f=u',
+  LACK: 'https://www.ikea.com/us/en/images/products/lack-coffee-table-white-stained-oak-effect__0708822_pe726753_s5.jpg?f=u',
 }
 
-const mk = (cat: Cat, name: string, price: number, why: string): ShoppingResult => ({
-  name,
-  price_usd: price,
-  retailer: 'IKEA',
-  product_url: 'https://www.ikea.com/us/en/',
-  image_url: IMG[cat],
-  why,
-})
+// A reliable, always-loading placeholder tile labeled with the item name.
+function tile(name: string): string {
+  return `https://placehold.co/600x600/ece5d8/9a8c78?text=${encodeURIComponent(name.split(',')[0])}`
+}
+
+const mk = (_cat: Cat, name: string, price: number, why: string): ShoppingResult => {
+  const lead = name.split(' ')[0]
+  return {
+    name,
+    price_usd: price,
+    retailer: 'IKEA',
+    // Real search URL for the product — always resolves to a relevant page.
+    product_url: `https://www.ikea.com/us/en/search/?q=${encodeURIComponent(name.split(',')[0])}`,
+    image_url: REAL_IMG[lead] ?? tile(name),
+    why,
+  }
+}
 
 // Ordered cheapest → priciest within each category.
 export const CATALOG: Record<Cat, ShoppingResult[]> = {
