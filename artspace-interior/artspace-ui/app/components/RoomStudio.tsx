@@ -249,16 +249,36 @@ export function RoomStudio() {
     [fitCamera]
   )
 
-  const addFurniture = useCallback((code: string): THREE.Object3D | null => {
+  const addFurniture = useCallback((code: string | null | undefined): THREE.Object3D | null => {
     const scene = sceneRef.current
     if (!scene) return null
-    const factory = new Function(
-      'THREE',
-      `${code}\nif (typeof createFurniture === 'function') return createFurniture();\nreturn null;`
-    )
-    const obj = factory(THREE)
-    if (!(obj instanceof THREE.Object3D)) return null
-    obj.traverse((c) => {
+
+    // Try the (AI-generated) code; if it's broken or missing, never throw —
+    // fall back to a simple primitive so a piece always lands in the room.
+    let obj: unknown = null
+    if (code) {
+      try {
+        const factory = new Function(
+          'THREE',
+          `${code}\nif (typeof createFurniture === 'function') return createFurniture();\nreturn null;`
+        )
+        obj = factory(THREE)
+      } catch (err) {
+        console.warn('[addFurniture] generated code failed to run → using primitive', err)
+      }
+    }
+    if (!(obj instanceof THREE.Object3D)) {
+      const g = new THREE.Group()
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.8, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0xb8b0a2, roughness: 0.85 })
+      )
+      box.position.y = 0.4
+      g.add(box)
+      obj = g
+    }
+    const piece = obj as THREE.Object3D
+    piece.traverse((c) => {
       if ((c as THREE.Mesh).isMesh) {
         c.castShadow = true
         c.receiveShadow = true
@@ -266,17 +286,17 @@ export function RoomStudio() {
     })
     const place = placementRef.current
     if (place) {
-      obj.position.set(place.x, 0, place.z)
+      piece.position.set(place.x, 0, place.z)
       // consume the placement marker
       placementRef.current = null
       if (markerRef.current) markerRef.current.visible = false
       setPlacementSet(false)
     } else {
       const i = addedCountRef.current++
-      obj.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
+      piece.position.set(-1.8 + (i % 4) * 1.2, 0, 1.2 - Math.floor(i / 4) * 1.2)
     }
-    scene.add(obj)
-    return obj
+    scene.add(piece)
+    return piece
   }, [])
 
   // --- actions -------------------------------------------------------------
@@ -357,9 +377,9 @@ export function RoomStudio() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ furniture_type: q, style: '', colors: ['neutral'], materials: ['wood'] }),
       })
-      const genData = await gen.json()
+      const genData = await gen.json().catch(() => ({}))
       const id = itemId++
-      const obj = genData.code ? addFurniture(genData.code) : null
+      const obj = addFurniture(genData.code)
       if (obj) addedObjectsRef.current.set(id, obj)
       setItems((prev) => [...prev, { ...product, id, category: CATEGORY(q) }])
     } catch {

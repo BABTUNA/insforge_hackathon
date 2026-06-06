@@ -1,37 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { spawnAgent, readAgent, type ShoppingResult } from '@/lib/fleet/replicas'
-import { FALLBACK_PRODUCTS } from '@/lib/fleet/fallback'
+import { parseMaxPrice, pickFromCatalog } from '@/lib/fleet/catalog'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Pick a canned product whose category best matches the free-text query.
-function mockResult(query: string): ShoppingResult {
-  const q = query.toLowerCase()
-  const map: Array<[string[], string]> = [
-    [['sofa', 'couch', 'sectional', 'loveseat'], 'sofa'],
-    [['coffee table', 'side table', 'table', 'desk'], 'coffee_table'],
-    [['rug', 'carpet'], 'rug'],
-    [['lamp', 'light', 'lighting'], 'floor_lamp'],
-    [['chair', 'armchair', 'stool', 'seat'], 'accent_chair'],
-    [['art', 'painting', 'print', 'poster', 'frame'], 'wall_art'],
-    [['plant', 'tree', 'greenery'], 'plant'],
-    [['book', 'shelf', 'shelving', 'storage', 'cabinet'], 'bookshelf'],
-  ]
-  for (const [keys, slot] of map) {
-    if (keys.some((k) => q.includes(k))) return FALLBACK_PRODUCTS[slot]
-  }
-  return FALLBACK_PRODUCTS.accent_chair
-}
-
-function prompt(query: string): string {
+function prompt(query: string, maxPrice: number | null): string {
+  const budget = maxPrice
+    ? `HARD BUDGET: the price MUST be at most $${maxPrice} USD. Do not return anything above $${maxPrice}.`
+    : ''
   return [
     `You are an expert interior-design shopping agent.`,
     `Find ONE real, currently-purchasable item matching this request: "${query}".`,
-    `Use your browser to search real retailers (IKEA, Wayfair, West Elm, CB2, Article, Target, Amazon) and open the actual product page.`,
-    `Return ONLY a single-line JSON object as the FINAL line: {"name":string,"price_usd":number,"retailer":string,"product_url":string,"image_url":string,"why":string}.`,
-    `Nothing after the JSON.`,
-  ].join('\n')
+    budget,
+    `Use your browser to search real retailers (IKEA, Wayfair, West Elm, CB2, Article, Target, Amazon) and open the actual product page to confirm the price.`,
+    `Return ONLY a single-line JSON object as the FINAL line of your reply, exactly:`,
+    `{"name":string,"price_usd":number,"retailer":string,"product_url":string,"image_url":string,"why":string}`,
+    `price_usd must be a number (no "$"). Output nothing after the JSON.`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function valid(r: ShoppingResult | null, maxPrice: number | null): r is ShoppingResult {
+  if (!r || typeof r.name !== 'string' || !r.name.trim()) return false
+  const price = Number(r.price_usd)
+  if (!Number.isFinite(price) || price <= 0) return false
+  if (maxPrice != null && price > maxPrice * 1.02) return false // enforce budget (2% tolerance)
+  return true
 }
 
 export async function POST(req: NextRequest) {
@@ -44,22 +40,33 @@ export async function POST(req: NextRequest) {
   const query = (body.query || '').trim()
   if (!query) return NextResponse.json({ error: 'query required' }, { status: 400 })
 
+  const maxPrice = parseMaxPrice(query)
+
+  // Mock mode: instant, reliable, in-budget.
   if (body.mock) {
-    return NextResponse.json({ result: mockResult(query), source: 'mock' })
+    return NextResponse.json({ result: pickFromCatalog(query, maxPrice), source: 'mock' })
   }
 
+  // Live: one agent, polled, with strict validation. Fall back to the catalog
+  // (category + budget aware) on timeout / over-budget / unparseable result.
   try {
-    const agentId = await spawnAgent('chat-shop', prompt(query))
-    // Poll up to ~100s for the agent to return a product.
-    for (let i = 0; i < 40; i++) {
-      await new Promise((r) => setTimeout(r, 2500))
+    const agentId = await spawnAgent('chat-shop', prompt(query, maxPrice))
+    for (let i = 0; i < 32; i++) {
+      await new Promise((r) => setTimeout(r, 2500)) // ~80s ceiling
       const snap = await readAgent(agentId)
-      if (snap.status === 'done' && snap.result) {
-        return NextResponse.json({ result: snap.result, source: 'agent', agentId })
+      if (snap.status === 'done') {
+        const got = snap.result?.price_usd
+        if (valid(snap.result, maxPrice)) {
+          return NextResponse.json({ result: snap.result, source: 'agent' })
+        }
+        // Agent finished but result is missing/over-budget → reliable fallback.
+        console.warn(`[research] agent result rejected (maxPrice=${maxPrice}, got=${got}) → catalog`)
+        break
       }
     }
-  } catch {
-    /* fall through to mock */
+  } catch (err) {
+    console.error(`[research] agent error → catalog: ${err instanceof Error ? err.message : err}`)
   }
-  return NextResponse.json({ result: mockResult(query), source: 'fallback' })
+
+  return NextResponse.json({ result: pickFromCatalog(query, maxPrice), source: 'fallback' })
 }
