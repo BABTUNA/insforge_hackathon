@@ -466,15 +466,21 @@ export function RoomStudio() {
         injectRoom(data.room_code)
       }
       const loaded: Item[] = []
+      let added = 0
       for (const it of (data.items as Array<{ label: string; category: string; x: number; z: number; result: Product }>) ?? []) {
         const id = itemId++
         const obj = addFurniture(null, { x: it.x, z: it.z }, it.category)
-        if (obj) addedObjectsRef.current.set(id, obj)
+        if (obj) {
+          addedObjectsRef.current.set(id, obj)
+          added++
+        }
         loaded.push({ ...it.result, id, category: it.label, x: it.x, z: it.z })
       }
       setItems(loaded)
       setPhase('room')
       setStatusMsg('')
+      setDbg(`identify: ${data.source} · items ${loaded.length} · added ${added} · sceneKids ${sceneRef.current?.children.length ?? 0}`)
+      console.log('[identify]', { source: data.source, items: loaded.length, added })
     } catch (err) {
       setStatusMsg(err instanceof Error ? err.message : 'Could not scan the room')
       setPhase('upload')
