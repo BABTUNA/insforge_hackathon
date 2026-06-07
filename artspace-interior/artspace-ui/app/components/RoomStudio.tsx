@@ -64,6 +64,7 @@ export function RoomStudio() {
 
   const [phase, setPhase] = useState<Phase>('upload')
   const [imageData, setImageData] = useState<string | null>(null)
+  const [imageName, setImageName] = useState('')
   const [statusMsg, setStatusMsg] = useState('')
   const [mock, setMock] = useState(false)
   const [items, setItems] = useState<Item[]>([])
@@ -397,6 +398,7 @@ export function RoomStudio() {
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setImageName(file.name)
     const reader = new FileReader()
     reader.onload = () => {
       const img = new window.Image()
@@ -443,6 +445,38 @@ export function RoomStudio() {
       setPhase('room')
     } catch (err) {
       setStatusMsg(err instanceof Error ? err.message : 'Generation failed')
+      setPhase('upload')
+    }
+  }
+
+  // Identify the furniture already in the uploaded photo and rebuild it shoppable.
+  const identifyRoom = async () => {
+    if (!imageData) return
+    setPhase('generating')
+    setStatusMsg('Scanning the room for furniture…')
+    try {
+      const res = await fetch('/api/furniture/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_data: imageData, image_name: imageName }),
+      })
+      const data = await res.json()
+      if (data.room_code) {
+        roomCodeRef.current = data.room_code
+        injectRoom(data.room_code)
+      }
+      const loaded: Item[] = []
+      for (const it of (data.items as Array<{ label: string; category: string; x: number; z: number; result: Product }>) ?? []) {
+        const id = itemId++
+        const obj = addFurniture(null, { x: it.x, z: it.z }, it.category)
+        if (obj) addedObjectsRef.current.set(id, obj)
+        loaded.push({ ...it.result, id, category: it.label, x: it.x, z: it.z })
+      }
+      setItems(loaded)
+      setPhase('room')
+      setStatusMsg('')
+    } catch (err) {
+      setStatusMsg(err instanceof Error ? err.message : 'Could not scan the room')
       setPhase('upload')
     }
   }
@@ -648,6 +682,13 @@ export function RoomStudio() {
                       className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff22cc] px-8 py-3.5 text-base font-semibold text-[#ffffff] transition-colors hover:bg-[#d600a8] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <Sparkles className="h-5 w-5" /> Generate my room in 3D
+                    </button>
+                    <button
+                      onClick={identifyRoom}
+                      disabled={!imageData}
+                      className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ff22cc] px-8 py-3 text-sm font-semibold text-[#d600a8] transition-colors hover:bg-[#ffe6f9] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Box className="h-4 w-4" /> Find the furniture in this room
                     </button>
                   </div>
                 )}
