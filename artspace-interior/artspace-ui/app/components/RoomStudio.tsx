@@ -431,8 +431,11 @@ export function RoomStudio() {
   const generateRoom = async () => {
     if (!imageData) return
     setPhase('generating')
-    setStatusMsg('Reading your room and rebuilding it in 3D…')
     try {
+      // Staged rendering so the room build always shows progress (not an instant cut).
+      setStatusMsg('Analyzing your room photo…')
+      await sleep(2200)
+      setStatusMsg('Reconstructing walls, floor & lighting…')
       const res = await fetch('/api/generate-complete-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -440,6 +443,9 @@ export function RoomStudio() {
       })
       const data = await res.json()
       if (!data.code) throw new Error('No room code returned')
+      await sleep(2400)
+      setStatusMsg('Rendering the 3D scene…')
+      await sleep(2200)
       roomCodeRef.current = data.code
       injectRoom(data.code)
       setPhase('room')
@@ -462,9 +468,11 @@ export function RoomStudio() {
         body: JSON.stringify({ image_data: imageData, image_name: imageName }),
       })
       const data = await res.json()
-      await sleep(1600)
+      await sleep(2600)
+      setStatusMsg('Detecting pieces & matching products…')
+      await sleep(2400)
       setStatusMsg('Rebuilding the room in 3D…')
-      await sleep(1400)
+      await sleep(2200)
       if (data.room_code) {
         roomCodeRef.current = data.room_code
         injectRoom(data.room_code)
@@ -476,7 +484,9 @@ export function RoomStudio() {
       const loaded: Item[] = []
       for (const it of items) {
         setActivity(`Sourcing “${it.result?.name ?? it.label}”…`)
-        await sleep(1300)
+        await sleep(1600)
+        setActivity(`Generating 3D model for “${it.result?.name ?? it.label}”…`)
+        await sleep(1700)
         const id = itemId++
         const obj = addFurniture(null, { x: it.x, z: it.z }, it.category)
         if (obj) addedObjectsRef.current.set(id, obj)
@@ -500,7 +510,7 @@ export function RoomStudio() {
     setSaved(false)
     // Staged, believable agent progress (buffers so it doesn't feel instant).
     setActivity('Spawning a shopping agent…')
-    await sleep(900)
+    await sleep(1600)
     try {
       setActivity(`Searching real retailers for “${q}”…`)
       const res = await fetch('/api/furniture/research', {
@@ -512,15 +522,19 @@ export function RoomStudio() {
       const product: Product | undefined = data.result
       if (!product) throw new Error('No product found')
 
+      setActivity('Comparing options & checking stock…')
+      await sleep(2400)
       setActivity('Reading the product page…')
-      await sleep(1400)
-      setActivity('Building the 3D model into your room…')
+      await sleep(2000)
+      setActivity('Generating the 3D model…')
       const gen = await fetch('/api/generate-3d', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ furniture_type: q, style: '', colors: ['neutral'], materials: ['wood'] }),
       })
       const genData = await gen.json().catch(() => ({}))
+      await sleep(2200)
+      setActivity('Placing it in your room…')
       await sleep(900)
       const id = itemId++
       const obj = addFurniture(genData.code, undefined, q)
