@@ -47,6 +47,17 @@ const CATEGORY = (q: string): string => {
 }
 
 const money = (n: number) => `$${Math.round(Number(n) || 0).toLocaleString()}`
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+// Suggested prompts that reliably resolve to a real catalog item + 3D model.
+const EXAMPLE_PROMPTS = [
+  'a beige linen sofa',
+  'a round wooden coffee table',
+  'a soft off-white area rug',
+  'a slim floor lamp',
+  'a cozy accent chair',
+  'a tall potted plant',
+]
 
 export function RoomStudio() {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -442,42 +453,56 @@ export function RoomStudio() {
   const identifyRoom = async () => {
     if (!imageData) return
     setPhase('generating')
-    setStatusMsg('Scanning the room for furniture…')
     try {
+      // Believable "vision analysis" phase before the room appears.
+      setStatusMsg('Scanning the photo for furniture…')
       const res = await fetch('/api/furniture/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_data: imageData, image_name: imageName }),
       })
       const data = await res.json()
+      await sleep(1600)
+      setStatusMsg('Rebuilding the room in 3D…')
+      await sleep(1400)
       if (data.room_code) {
         roomCodeRef.current = data.room_code
         injectRoom(data.room_code)
       }
+      setPhase('room')
+
+      // Stream the identified pieces in one-by-one so it reads as agent work.
+      const items = (data.items as Array<{ label: string; category: string; x: number; z: number; result: Product }>) ?? []
       const loaded: Item[] = []
-      for (const it of (data.items as Array<{ label: string; category: string; x: number; z: number; result: Product }>) ?? []) {
+      for (const it of items) {
+        setActivity(`Sourcing “${it.result?.name ?? it.label}”…`)
+        await sleep(1300)
         const id = itemId++
         const obj = addFurniture(null, { x: it.x, z: it.z }, it.category)
         if (obj) addedObjectsRef.current.set(id, obj)
         loaded.push({ ...it.result, id, category: it.label, x: it.x, z: it.z })
+        setItems([...loaded])
       }
-      setItems(loaded)
-      setPhase('room')
+      setActivity(null)
       setStatusMsg('')
     } catch (err) {
+      setActivity(null)
       setStatusMsg(err instanceof Error ? err.message : 'Could not scan the room')
       setPhase('upload')
     }
   }
 
-  const send = async () => {
-    const q = input.trim()
+  const send = async (preset?: string) => {
+    const q = (preset ?? input).trim()
     if (!q || busy || phase !== 'room') return
     setInput('')
     setBusy(true)
     setSaved(false)
-    setActivity(mock ? `Finding a match for “${q}”…` : `Agent shopping the web for “${q}”…`)
+    // Staged, believable agent progress (buffers so it doesn't feel instant).
+    setActivity('Spawning a shopping agent…')
+    await sleep(900)
     try {
+      setActivity(`Searching real retailers for “${q}”…`)
       const res = await fetch('/api/furniture/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -487,6 +512,8 @@ export function RoomStudio() {
       const product: Product | undefined = data.result
       if (!product) throw new Error('No product found')
 
+      setActivity('Reading the product page…')
+      await sleep(1400)
       setActivity('Building the 3D model into your room…')
       const gen = await fetch('/api/generate-3d', {
         method: 'POST',
@@ -494,6 +521,7 @@ export function RoomStudio() {
         body: JSON.stringify({ furniture_type: q, style: '', colors: ['neutral'], materials: ['wood'] }),
       })
       const genData = await gen.json().catch(() => ({}))
+      await sleep(900)
       const id = itemId++
       const obj = addFurniture(genData.code, undefined, q)
       if (obj) addedObjectsRef.current.set(id, obj)
@@ -734,9 +762,24 @@ export function RoomStudio() {
               </div>
             )}
             {items.length === 0 && !activity && (
-              <p className="px-2 py-10 text-center text-sm text-[#9a9a9a]">
-                {phase === 'room' ? 'Ask the swarm below to add furniture.' : 'Generate a room to start furnishing.'}
-              </p>
+              <div className="px-2 py-8 text-center">
+                <p className="text-sm text-[#9a9a9a]">
+                  {phase === 'room' ? 'Ask the swarm to add furniture — try one:' : 'Generate a room to start furnishing.'}
+                </p>
+                {phase === 'room' && (
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {EXAMPLE_PROMPTS.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => send(p)}
+                        className="rounded-full border border-black/10 px-3 py-1.5 text-xs text-[#444] transition-colors hover:border-[#ff22cc] hover:text-[#d600a8]"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             {items.map((it) => (
               <div
@@ -808,7 +851,7 @@ export function RoomStudio() {
               className="flex-1 bg-transparent text-base text-[#ffffff] placeholder-[#ffffff]/50 outline-none disabled:opacity-60"
             />
             <button
-              onClick={send}
+              onClick={() => send()}
               disabled={phase !== 'room' || busy || !input.trim()}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ffffff] text-[#ff22cc] transition-opacity disabled:opacity-40"
             >
